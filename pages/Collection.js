@@ -32,6 +32,11 @@ let Page = {
 
     render_list : function(parent_div) {
         parent_div.innerHTML = '';
+
+        if ((Page.App.collection==undefined)||(Page.App.collection.list==undefined)) {
+            return;
+        }
+
         const table = document.createElement('table');
         table.className = 'collection-table';
         const thead = document.createElement('thead');
@@ -167,6 +172,10 @@ let Page = {
     },
 
     normalise_collection : function() {
+        if ((Page.App.data==undefined)||(Page.App.data.release_details==undefined)) {
+            return;
+        }
+
         Page.App.collection={};
 
         // Normalise forlders
