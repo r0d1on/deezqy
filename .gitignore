@@ -1,0 +1,8 @@
+deploy_info/
+local
+tmp/*
+_*
+*.code-workspace
+sitemap.txt
+robots.txt
+

@@ -1,0 +1,219 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f7f7f7;
+    color: #222;
+}
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 64px;
+    background: linear-gradient(90deg, #ff8a00 0%, #e52e71 100%);
+    display: flex;
+    align-items: center;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.header-sign {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #fff;
+    margin-left: 32px;
+    letter-spacing: 2px;
+}
+.menu {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    gap: 48px;
+    margin-left: 48px;
+}
+.menu-item {
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    position: relative;
+}
+.menu-item.active, .menu-item:hover {
+    background: rgba(255,255,255,0.18);
+}
+.submenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #fff;
+    color: #222;
+    min-width: 180px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border-radius: 0 0 8px 8px;
+    padding: 8px 0;
+    display: none;
+    flex-direction: column;
+    z-index: 10;
+}
+.menu-item.show-submenu .submenu {
+    display: flex;
+}
+.submenu-item {
+    padding: 10px 24px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s;
+}
+.submenu-item:hover {
+    background: #f0f0f0;
+}
+.main {
+    margin-top: 64px;
+    margin-bottom: 48px;
+    min-height: calc(100vh - 112px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.app-content {
+    font-size: 2rem;
+    color: #444;
+    text-align: center;
+}
+.footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    background: #f8f8f8;
+    border-top: 1px solid #ddd;
+    font-size: 16px;
+    z-index: 100;
+}
+.footer-left, .footer-right {
+    width: 200px;
+    text-align: center;
+    color: #555;
+}
+
+.footer-right {
+    text-align: left;
+}
+
+.footer-center {
+    flex: 1;
+    text-align: center;
+    color: #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+.progress-bar {
+    width: 180px;
+    height: 16px;
+    background: #eee;
+    border-radius: 8px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 8px;
+}
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #2196f3);
+    transition: width 0.3s;
+}
+
+input,button {
+    font-size: 2rem;
+    color: #444;
+}
+.collection-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    margin: 24px 0;
+    font-size: 1rem;
+}
+.collection-table th, .collection-table td {
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+.collection-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+    position: relative;
+}
+.collection-table tr:nth-child(even) {
+    background: #fafafa;
+}
+.collection-table tr:hover {
+    background: #ffe0f0;
+}
+.collection-table input[type="text"] {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    font-size: 0.95rem;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.help-container {
+    max-width: 700px;
+    margin: 32px auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 32px 40px;
+    font-size: 1.15rem;
+    color: #333;
+}
+.help-container h2 {
+    margin-top: 0;
+    color: #e52e71;
+    font-size: 2rem;
+    margin-bottom: 18px;
+}
+.help-container ul {
+    padding-left: 22px;
+    margin: 0;
+}
+.help-container li {
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+.help-container a {
+    color: #e52e71;
+    text-decoration: underline;
+}
+.help-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.help-list li {
+    margin-bottom: 22px;
+    padding-left: 0;
+}
+.help-key {
+    font-weight: bold;
+    color: #e52e71;
+    font-size: 1.08em;
+    margin-bottom: 2px;
+    text-align: left;
+}
+.help-desc {
+    margin-left: 0;
+    color: #333;
+    font-size: 1em;
+    margin-top: 2px;
+    text-align: left;
+}
