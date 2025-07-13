@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Deezqy: Discogs collection analytics</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <script src="deploy_info.js"></script>
+
+</head>
+<body>
+    <div class="header">
+        <div class="header-sign">Deezqy: My music collection</div>
+        <div class="menu"></div>
+    </div>
+    <div class="main">
+        <div class="app-content"></div>
+    </div>
+    <div class="footer">
+        <div class="footer-left"><a href="https://github.com/r0d1on/deezqy" target="_blank">GitHub</a></div>
+        <div class="footer-center" id="footer-progress">Idle</div>
+        <div id="version" class="footer-right"></div>
+    </div>
+    <script type="module" src="app.js"></script>
+
+    <script>
+        let version = document.getElementById("version");
+        version.innerHTML = `<small style="color:black">version: ${deploy_info.version}<br>last updated: ${deploy_info.time}</small>`;
+    </script>
+<img loading="lazy" width="1" height="1" src="https://vmi1460258.contaboserver.net/1.png?deezqy"  alt=""></body>
+</html>
