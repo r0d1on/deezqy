@@ -12,20 +12,20 @@ let Page = {
     },
 
     LIST : [
-        {name: "release_folder", path: "folder.name", filter:""},
+        {name: "release_folder", path: "folder.name", filter:"", maxwidth:"150px"},
 
-        {name: "release_id", path: "release.id", filter:""},
-        {name: "release_format", path: "release.format", filter:"", maxwidth:"50px"},
+        {name: "release_id", path: "release.id", filter:"", maxwidth:"80px"},
+        {name: "release_format", path: "release.format", filter:"", maxwidth:"65px"},
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
-        {name: "release_rating", path: "release.rating", filter:""},
-        {name: "release_score", path: "release.score", post:true},
+        {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px"},
+        {name: "release_score", path: "release.score", post:true, maxwidth:"80px"},
 
         //{name: "track_id", path: "track.id", filter:""},
         {name: "track_artist", path: "raw_track.artist", filter:"", maxwidth:"150px"},
-        {name: "track_position", path: "raw_track.position"},
+        {name: "track_position", path: "raw_track.position", maxwidth:"80px"},
         {name: "track_name", path: "track.title", filter:"", maxwidth:"250px"},
-        {name: "track_time", path: "raw_track.duration"},
+        {name: "track_time", path: "raw_track.duration", maxwidth:"80px"},
 
         {name: "track_seen", path: "track.refs", render: (td, row)=>{
             let refs = row.track_seen;
@@ -100,6 +100,9 @@ let Page = {
                 };
                 th.appendChild(input);
             }
+            if (col.maxwidth)
+                th.style = `max-width:${col.maxwidth};overflow-x:auto;`;
+
             headerRow.appendChild(th);
         });
         thead.appendChild(headerRow);
@@ -196,9 +199,17 @@ let Page = {
             .replaceAll("?"," ")
             .replaceAll("\\"," ")
             .replace(/ +/g," ")
+            .replaceAll(/[ÃÂãâ]+/g,'')
             .trim()
             .toLowerCase()
         );
+    },
+
+    unify_name : function(name) {
+        return (
+                name
+                .replaceAll(/[ÃÂãâ¶]+/g,'')
+            )
     },
 
     normalise_collection : function() {
@@ -217,12 +228,17 @@ let Page = {
         // Normalise releases
         Page.App.collection['releases'] = {};
         Page.App.data.releases.forEach((item)=>{
-            Page.App.collection['releases'][item.id] = structuredClone(item)
+            let item_cpy = structuredClone(item);
+            item_cpy.basic_information.title = Page.unify_name(item_cpy.basic_information.title);
+            Page.App.collection['releases'][item.id] = item_cpy;
         });
 
         // Inject release details into releases
         Page.App.data.release_details.forEach((item)=>{
-            Page.App.collection['releases'][item.id]['details'] = structuredClone(item);
+            let item_cpy = structuredClone(item);
+            item_cpy.title = Page.unify_name(item_cpy.title);
+            item_cpy.artists_sort = Page.unify_name(item_cpy.artists_sort);
+            Page.App.collection['releases'][item.id]['details'] = item_cpy;
         });
 
         // Extract and normalize all tracks for all releases, cross-reference links between tracks and releases
@@ -454,25 +470,29 @@ let Page = {
     render : function(parent) {
         Page._last_parent = parent;
         parent.innerHTML = "";
+
+        let controls = document.createElement("div");
+        controls.className="collection-controls";
+        
         let button = document.createElement("button");
         button.innerText = "Reload";
         button.onclick = (e)=>Page._download_data();
-        parent.appendChild(button);
+        controls.appendChild(button);
 
-        parent.appendChild(document.createTextNode("  "));
+        controls.appendChild(document.createTextNode("  "));
 
         button = document.createElement("button");
         button.innerText = "Update";
         button.onclick = (e)=>Page._download_data(true);
-        parent.appendChild(button);
+        controls.appendChild(button);
 
-
+        parent.appendChild(controls);
         parent.appendChild(document.createElement("hr"));
 
         let list_view = document.createElement("div");
         list_view.className="collection-container";
-        parent.appendChild(list_view);
         Page.render_list(list_view);
+        parent.appendChild(list_view);
     }
 
 }
