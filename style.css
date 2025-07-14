@@ -17,7 +17,7 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .header-sign {
-    font-size: 1.6rem;
+    font-size: 25px;
     font-weight: bold;
     color: #fff;
     margin-left: 32px;
@@ -32,7 +32,7 @@ body {
 }
 .menu-item {
     color: #fff;
-    font-size: 1.1rem;
+    font-size: 20px;
     cursor: pointer;
     padding: 8px 16px;
     border-radius: 6px;
@@ -62,7 +62,7 @@ body {
 .submenu-item {
     padding: 10px 24px;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 15px;
     transition: background 0.2s;
 }
 .submenu-item:hover {
@@ -72,14 +72,14 @@ body {
     margin-top: 64px;
     margin-bottom: 48px;
     min-height: calc(100vh - 112px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    /* display: flex;*/ 
+    /* align-items: center; */
+    /* justify-content: center; */
 }
 .app-content {
-    font-size: 2rem;
+    font-size: 30px;
     color: #444;
-    text-align: center;
+    /* text-align: center; */
 }
 .footer {
     position: fixed;
@@ -87,8 +87,8 @@ body {
     height: 48px;
     display: flex;
     align-items: center;
-    background: #f8f8f8;
-    border-top: 1px solid #ddd;
+    background: #dbdbdb;
+    border-top: 1px solid #989898;
     font-size: 16px;
     z-index: 100;
 }
@@ -100,6 +100,7 @@ body {
 
 .footer-right {
     text-align: left;
+    padding-left: 10px;
 }
 
 .footer-center {
@@ -110,9 +111,14 @@ body {
     align-items: center;
     justify-content: center;
     gap: 12px;
+    font-size: 16px;
+    border-left: 1px solid #989898;
+    border-right: 1px solid #989898;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 .progress-bar {
-    width: 180px;
+    width: calc(100% - 150px);
     height: 16px;
     background: #eee;
     border-radius: 8px;
@@ -128,16 +134,17 @@ body {
 }
 
 input,button {
-    font-size: 2rem;
+    font-size: 30px;
     color: #444;
 }
 .collection-table {
-    width: 100%;
+    width:100%;
+    /*table-layout: fixed;*/
     border-collapse: collapse;
     background: #fff;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     margin: 24px 0;
-    font-size: 1rem;
+    font-size: 20px;
 }
 .collection-table th, .collection-table td {
     border: 1px solid #e0e0e0;
@@ -145,6 +152,10 @@ input,button {
     text-align: left;
     vertical-align: middle;
 }
+.collection-table td.last {
+    overflow-x: auto;
+}
+
 .collection-table th {
     background: #f5f5f5;
     font-weight: 600;
@@ -160,7 +171,7 @@ input,button {
     display: block;
     width: 100%;
     margin-top: 6px;
-    font-size: 0.95rem;
+    font-size: 20px;
     padding: 4px 6px;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -173,13 +184,13 @@ input,button {
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     padding: 32px 40px;
-    font-size: 1.15rem;
+    font-size: 25px;
     color: #333;
 }
 .help-container h2 {
     margin-top: 0;
     color: #e52e71;
-    font-size: 2rem;
+    font-size: 30px;
     margin-bottom: 18px;
 }
 .help-container ul {

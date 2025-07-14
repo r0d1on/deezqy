@@ -15,19 +15,39 @@ let Page = {
         {name: "release_folder", path: "folder.name", filter:""},
 
         {name: "release_id", path: "release.id", filter:""},
-        {name: "release_format", path: "release.format", filter:""},
-        {name: "release_artist", path: "release.details.artists_sort", filter:""},
-        {name: "release_title", path: "release.details.title", filter:""},
+        {name: "release_format", path: "release.format", filter:"", maxwidth:"50px"},
+        {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
+        {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
         {name: "release_rating", path: "release.rating", filter:""},
         {name: "release_score", path: "release.score", post:true},
 
         //{name: "track_id", path: "track.id", filter:""},
-        {name: "track_artist", path: "raw_track.artist", filter:""},
+        {name: "track_artist", path: "raw_track.artist", filter:"", maxwidth:"150px"},
         {name: "track_position", path: "raw_track.position"},
-        {name: "track_name", path: "track.title", filter:""},
+        {name: "track_name", path: "track.title", filter:"", maxwidth:"250px"},
         {name: "track_time", path: "raw_track.duration"},
 
-        {name: "track_seen", path: "track.refs", filter:""},
+        {name: "track_seen", path: "track.refs", render: (td, row)=>{
+            let refs = row.track_seen;
+            if ((refs===undefined)||(refs.length==0)) return;
+
+            let html = "";
+            let first = true;
+
+            refs.filter(ref=>{
+                return ref.release_id != row.release_id;
+            }).forEach((ref)=>{
+                if (!first) 
+                    html += "<br>";
+                first = false;
+                let time_this = row.track_time.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+                let time_that = ref.duration.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+                html += `<b style="color:${((Math.abs(time_this-time_that) < 10) ? 'blue':'red')}" title="${ref.duration}">♪</b> `;
+                html += `<b><small><a href="#${ref.release_id}">${ref.format}</a> : ${ref.title}</small></b>`;
+            });
+            td.innerHTML = html;
+        }},
+
     ],
 
     render_list : function(parent_div) {
@@ -50,7 +70,6 @@ let Page = {
         // parsable columns
         Page.LIST.forEach((col, colIdx) => {
             const th = document.createElement('th');
-
             const span = document.createElement('span');
 
             let sortIndicator = '';
@@ -113,32 +132,33 @@ let Page = {
         console.log("List average score: ", scores.reduce((p,c)=>p+c[1], 0) / scores.length);
 
         // Fill table rows
+        let seen_releases = {};
         const tbody = document.createElement('tbody');
         filteredCollection.forEach((row, index) => {
             const tr = document.createElement('tr');
 
             // add row number
             const td = document.createElement('td');
-            td.textContent = index+1;
+            if (!(row.release_id in seen_releases)) {
+                seen_releases[row.release_id] = 1;
+                td.innerHTML = `<b id="${row.release_id}">${index+1}</b>`;
+            } else {
+                td.textContent = index + 1;
+            };
             tr.appendChild(td);
 
             // add parsable columns
-            Page.LIST.forEach(col => {
+            Page.LIST.forEach((col, ix) => {
                 const td = document.createElement('td');
-                if (Array.isArray(row[col.name])) {
-                    let first = true;
-                    row[col.name].filter(ref=>{
-                        return !ref.includes(`${row["release_format"]}:${row["release_title"]}`);
-                    }).forEach((ref)=>{
-                        const text = ref;
-                        (!first)&&td.appendChild(document.createElement("hr"));
-                        td.appendChild(document.createTextNode(ref));
-                        first = false;
-                    })
+                if (col.render)
+                    col.render(td, row)
+                else {
+                    if (col.maxwidth)
+                        td.innerHTML = `<div style="max-width:${col.maxwidth};overflow-x:auto;">${row[col.name] !== undefined ? row[col.name] : ''}</div>`;
+                    else
+                        td.innerHTML = row[col.name] !== undefined ? row[col.name] : '';
                 }
-                else
-                    td.textContent = row[col.name] !== undefined ? row[col.name] : '';
-
+                    
                 tr.appendChild(td);
             });
             tbody.appendChild(tr);
@@ -153,10 +173,10 @@ let Page = {
 
         let key = path.pop();
         let value = context[key];
-        if (path.length)
-            return Page.extract_list_value(value, path)
-        else
+        if ((value==undefined)||(path.length==0))
             return value;
+        else
+            return Page.extract_list_value(value, path)
     },
 
     unify_track_name : function(title) {
@@ -166,6 +186,16 @@ let Page = {
             .replaceAll("in' ",'ing ')
             .replaceAll("|",'')
             .replaceAll("ÃÂ","")
+            .replaceAll("!","")
+            .replaceAll(","," ")
+            .replaceAll("."," ")
+            .replaceAll("("," ")
+            .replaceAll(")"," ")
+            .replaceAll("-"," ")
+            .replaceAll("/"," ")
+            .replaceAll("?"," ")
+            .replaceAll("\\"," ")
+            .replace(/ +/g," ")
             .trim()
             .toLowerCase()
         );
@@ -197,7 +227,7 @@ let Page = {
 
         // Extract and normalize all tracks for all releases, cross-reference links between tracks and releases
         Page.App.progress(0, Object.keys(App.collection.releases).length, "Normalising the collection");
-        Page.App.collection.tracks_by_name = {};
+        Page.App.collection.tracks_by_code = {};
         Page.App.collection.tracks = {};
         Page.App.collection.list = [];
 
@@ -220,15 +250,19 @@ let Page = {
                         raw_track.artist = track_artist;
 
                         let track_title = Page.unify_track_name(raw_track.title);
+                        let track_code = `${Page.unify_track_name(track_artist)}:${track_title}`;
+
                         // p[name] = (p[name]||0) + 1;
                         
-                        let id = Page.App.collection.tracks_by_name[track_title];
+                        let id = Page.App.collection.tracks_by_code[track_code];
                         if (id === undefined) {
-                            id = Object.keys(Page.App.collection.tracks_by_name).length + 1
-                            Page.App.collection.tracks_by_name[track_title] = id;
+                            id = Object.keys(Page.App.collection.tracks_by_code).length + 1
+                            Page.App.collection.tracks_by_code[track_code] = id;
                             Page.App.collection.tracks[id] = {
                                 id: id,
                                 title: track_title,
+                                artist: track_artist,
+                                code: track_code,
                                 releases: [],
                                 refs : []
                             };
@@ -236,9 +270,14 @@ let Page = {
                         let track = Page.App.collection.tracks[id];
                         
                         track.releases.push(release_id);
-                        track.refs.push(
-                            `${format}:${release.details.title} [${track_artist}] (${raw_track.duration})`
-                        );
+                        track.refs.push({
+                                release_id: release_id,
+                                track_position: raw_track.position,
+                                artist: track_artist,
+                                format: format,
+                                title: release.details.title,
+                                duration: raw_track.duration
+                        });
 
                         raw_track.id = id;
                         raw_track.refs = track.refs;
@@ -431,6 +470,7 @@ let Page = {
         parent.appendChild(document.createElement("hr"));
 
         let list_view = document.createElement("div");
+        list_view.className="collection-container";
         parent.appendChild(list_view);
         Page.render_list(list_view);
     }
