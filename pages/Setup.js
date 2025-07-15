@@ -17,38 +17,42 @@ let Page = {
     render : function(parent) {
         parent.innerHTML = "";
 
-        // Discogs personal token value input
-        parent.appendChild(document.createTextNode("Discogs access token:"));
+        let settingsContainer = document.createElement("div");
+        settingsContainer.className = "settings-container";
+
+        // Credentials group
+        let credentialsGroup = document.createElement("div");
+        credentialsGroup.className = "settings-group credentials-group";
+        let tokenLabel = document.createElement("label");
+        tokenLabel.textContent = "Discogs access token:";
+        tokenLabel.className = "settings-label";
+        credentialsGroup.appendChild(tokenLabel);
         let i_token = document.createElement("input");
         i_token.type = "text";
-        i_token.placeholder = "discogs personal acess token";
+        i_token.placeholder = "discogs personal access token";
         i_token.value = Page.App.token || "";
+        i_token.className = "settings-input";
         i_token.onchange = (e)=>{
             Page.App.token = e.target.value;
             Page.App.Cookie.set("token", e.target.value);
         };
-        parent.appendChild(i_token);
-
-        parent.appendChild(document.createElement("br"));
-        parent.appendChild(document.createElement("br"));
-
-        // Discogs user name value input
-        parent.appendChild(document.createTextNode("User name:"));
+        credentialsGroup.appendChild(i_token);
+        let usernameLabel = document.createElement("label");
+        usernameLabel.textContent = "User name:";
+        usernameLabel.className = "settings-label";
+        credentialsGroup.appendChild(usernameLabel);
         let i_username = document.createElement("input");
         i_username.type = "text";
         i_username.value = Page.App.username || "";
+        i_username.className = "settings-input";
         i_username.onchange = (e)=>{
             Page.App.username = e.target.value;
             Page.App.Cookie.set("username", e.target.value);
         };
-        parent.appendChild(i_username);
-
-        parent.appendChild(document.createElement("br"));
-        parent.appendChild(document.createElement("br"));
-
-        // Discogs creds validity checkup
+        credentialsGroup.appendChild(i_username);
         let button = document.createElement("button");
         button.innerText = "Test credentials";
+        button.className = "settings-button";
         button.onclick = (e) => {
             if ((Page.App.token)&&(!Page.App.username)) {
                 Page.App.progress(0,1,"Testing access token");
@@ -77,7 +81,58 @@ let Page = {
                 alert("Specify access token or username at least");
             }
         };
-        parent.appendChild(button);  
+        credentialsGroup.appendChild(button);
+        settingsContainer.appendChild(credentialsGroup);
+
+        // Other settings group
+        let otherSettingsGroup = document.createElement("div");
+        otherSettingsGroup.className = "settings-group other-settings-group";
+        let matchTypeLabel = document.createElement("label");
+        matchTypeLabel.textContent = "Track matching type:";
+        matchTypeLabel.className = "settings-label";
+        otherSettingsGroup.appendChild(matchTypeLabel);
+        let switchContainer = document.createElement("div");
+        switchContainer.className = "switch-container";
+        let switchLabel = document.createElement("label");
+        switchLabel.className = "switch-label";
+        let switchInput = document.createElement("input");
+        switchInput.type = "checkbox";
+        switchInput.className = "switch-input";
+        let slider = document.createElement("span");
+        slider.className = "switch-slider";
+        let knob = document.createElement("span");
+        knob.className = "switch-knob";
+        slider.appendChild(knob);
+        let leftText = document.createElement("span");
+        leftText.textContent = "author & title";
+        leftText.className = "switch-left-text";
+        let rightText = document.createElement("span");
+        rightText.textContent = "title only";
+        rightText.className = "switch-right-text";
+        let matchType = Page.App.matching_type || "author_and_title";
+        switchInput.checked = (matchType === "title_only");
+        knob.style.left = switchInput.checked ? "30px" : "2px";
+        Page.App.matching_type = switchInput.checked ? "title_only" : "author_and_title";
+        switchInput.onchange = (e) => {
+            knob.style.left = e.target.checked ? "30px" : "2px";
+            Page.App.matching_type = e.target.checked ? "title_only" : "author_and_title";
+            setTimeout(Page.App.Pages.Collection.normalise_collection, 1);
+        };
+        switchLabel.appendChild(leftText);
+        switchLabel.appendChild(slider);
+        switchLabel.appendChild(rightText);
+        switchLabel.appendChild(switchInput);
+        slider.onclick = (e) => {
+            switchInput.checked = !switchInput.checked; 
+            switchInput.onchange({target: switchInput});
+            e.preventDefault();
+            return false;
+        };
+        switchContainer.appendChild(switchLabel);
+        otherSettingsGroup.appendChild(switchContainer);
+        settingsContainer.appendChild(otherSettingsGroup);
+
+        parent.appendChild(settingsContainer);
     }
 }
 

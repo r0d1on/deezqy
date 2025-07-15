@@ -25,15 +25,31 @@ let activeMenu = menuItems[0];
 let activeSubmenu = null;
 
 let App = {
+    matching_type: "author_and_title",
+
     progress: function(stage, stages, name) {
+        function idle() {
+            progressSection.innerHTML = 'Idle';
+            if (App.data) {
+                progressSection.innerHTML += " | DB timestamp: " + (new Date(App.data.timestamp)).toISOString();
+                progressSection.innerHTML += " | Releases: " + (App.data.releases||[]).length;
+                progressSection.innerHTML += " | Uniqueness score: " + ((Math.round(App.score*100)/100)||"-")+"%";
+            };
+        };
+
         const progressSection = document.getElementById('footer-progress');
         if (!progressSection) return;
+
+        if (stage < 0) {
+            idle();
+            return;
+        };
 
         if (((stage===undefined)&&(stages===undefined)&&(name===undefined))||(stage > stages)) {
             this._stage = undefined;
             this._stages = undefined;
             this._name = undefined;
-            progressSection.innerHTML = 'Idle';
+            idle();
             return;
         }
 
@@ -41,6 +57,7 @@ let App = {
             this._stages = stages;
             this._name = name;
         }
+
         if (stage !== undefined) {
             this._stage = stage;
         }
@@ -59,11 +76,18 @@ App.Cookie = Cookie.init(App);
 App.DB = DB.init(App);
 
 function initApp() {
+    App.Pages = {};
     menuItems.forEach(item => {
-        (item.page)&&(item.page.init(App));
+        if (item.page) {
+            item.page.init(App);
+            App.Pages[item.name] = item.page;
+        };
         if (item.submenu) {
             item.submenu.forEach(sub => {
-                (sub.page)&&(sub.page.init(App));
+                if (sub.page) {
+                    sub.page.init(App);
+                    App.Pages[item.name + ":" + item.submenu] = sub.page;
+                };
             });
         };
     });
