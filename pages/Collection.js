@@ -14,7 +14,7 @@ let Page = {
     LIST : [
         {name: "release_folder", path: "folder.name", filter:"", maxwidth:"150px"},
 
-        {name: "release_id", path: "release.id", filter:"", maxwidth:"80px"},
+        {name: "release_id", path: "release.id", filter:"", maxwidth:"90px"},
         {name: "release_format", path: "release.format", filter:"", maxwidth:"65px"},
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
@@ -97,6 +97,7 @@ let Page = {
                 input.onchange = (e) => {
                     Page.LIST[colIdx].filter = e.target.value.trim();
                     Page.render_list(parent_div);
+                    Page.App.progress(-1);
                 };
                 th.appendChild(input);
             }
@@ -132,7 +133,8 @@ let Page = {
         let scores = filteredCollection.map(row=>{
             return [row.release_id, Page.App.collection.releases[row.release_id].score];
         });
-        console.log("List average score: ", scores.reduce((p,c)=>p+c[1], 0) / scores.length);
+        Page.App.score = scores.reduce((p,c)=>p+c[1], 0) / scores.length;
+        console.log("List average score: ", Page.App.score);
 
         // Fill table rows
         let seen_releases = {};
@@ -183,26 +185,18 @@ let Page = {
     },
 
     unify_track_name : function(title) {
-        return (             
-            title               
-            .replaceAll('"','')
-            .replaceAll("in' ",'ing ')
-            .replaceAll("|",'')
-            .replaceAll("ÃÂ","")
-            .replaceAll("!","")
-            .replaceAll(","," ")
-            .replaceAll("."," ")
-            .replaceAll("("," ")
-            .replaceAll(")"," ")
-            .replaceAll("-"," ")
-            .replaceAll("/"," ")
-            .replaceAll("?"," ")
-            .replaceAll("\\"," ")
-            .replace(/ +/g," ")
-            .replaceAll(/[ÃÂãâ]+/g,'')
-            .trim()
-            .toLowerCase()
-        );
+        let replacements = [
+            [/["ÃÂãâ!\|]/g, ''],
+            [/[\,\.\(\)\-\/\?\\]/g],
+            ["in'( |$)", 'ing '], [/'t /g, "t "], [/'s /g, " is "],
+            [/'re /g, " are "], [/'m /g, " am "], [/'ll /g, " will "],
+            [/ +/g]
+        ];
+        let result = title.trim().toLowerCase();
+        replacements.forEach(r => {
+            result = result.replaceAll(r[0], ((r.length==2)?r[1]:" "));
+        });
+        return result.trim();
     },
 
     unify_name : function(name) {
@@ -257,62 +251,69 @@ let Page = {
                 let format = release.basic_information.formats.map(e=>e.name).join("|")
                 release.format = format;
 
-                release.details.tracklist.forEach((raw_track)=>{
-                    if (raw_track.type_!='heading') {
-                        let track_artist = (
-                            ((raw_track.artists||[]).map(item=>item.name)).join(',')||
-                            release.details.artists_sort
-                        );
-                        raw_track.artist = track_artist;
+                let loadTrack = (raw_track)=>{
+                    let track_artist = (
+                        ((raw_track.artists||[]).map(item=>item.name)).join(',')||
+                        release.details.artists_sort
+                    );
+                    raw_track.artist = track_artist;
 
-                        let track_title = Page.unify_track_name(raw_track.title);
-                        let track_code = `${Page.unify_track_name(track_artist)}:${track_title}`;
+                    let track_title = Page.unify_track_name(raw_track.title);
+                    let track_code = track_title.toLowerCase();
 
-                        // p[name] = (p[name]||0) + 1;
-                        
-                        let id = Page.App.collection.tracks_by_code[track_code];
-                        if (id === undefined) {
-                            id = Object.keys(Page.App.collection.tracks_by_code).length + 1
-                            Page.App.collection.tracks_by_code[track_code] = id;
-                            Page.App.collection.tracks[id] = {
-                                id: id,
-                                title: track_title,
-                                artist: track_artist,
-                                code: track_code,
-                                releases: [],
-                                refs : []
-                            };
+                    if (Page.App.matching_type=="author_and_title")
+                        track_code = `${Page.unify_track_name(track_artist).toLowerCase()}:${track_code}`;
+
+                    let id = Page.App.collection.tracks_by_code[track_code];
+                    if (id === undefined) {
+                        id = Object.keys(Page.App.collection.tracks_by_code).length + 1
+                        Page.App.collection.tracks_by_code[track_code] = id;
+                        Page.App.collection.tracks[id] = {
+                            id: id,
+                            title: track_title,
+                            artist: track_artist,
+                            code: track_code,
+                            releases: [],
+                            refs : []
                         };
-                        let track = Page.App.collection.tracks[id];
-                        
-                        track.releases.push(release_id);
-                        track.refs.push({
-                                release_id: release_id,
-                                track_position: raw_track.position,
-                                artist: track_artist,
-                                format: format,
-                                title: release.details.title,
-                                duration: raw_track.duration
-                        });
-
-                        raw_track.id = id;
-                        raw_track.refs = track.refs;
-
-                        // add flattened track info into collection items list
-                        let list_item = {};
-                        Page.LIST.forEach(col=>{
-                            list_item[col.name] = Page.extract_list_value(
-                                {
-                                    "folder": Page.App.collection.folders[release.folder_id],
-                                    "release": release,
-                                    "track": track,
-                                    "raw_track": raw_track
-                                },
-                                col.path
-                            )
-                        });
-                        Page.App.collection.list.push(list_item);
                     };
+                    let track = Page.App.collection.tracks[id];
+                    
+                    track.releases.push(release_id);
+                    track.refs.push({
+                            release_id: release_id,
+                            track_position: raw_track.position,
+                            artist: track_artist,
+                            format: format,
+                            title: release.details.title,
+                            duration: raw_track.duration
+                    });
+
+                    raw_track.id = id;
+                    raw_track.refs = track.refs;
+
+                    // add flattened track info into collection items list
+                    let list_item = {};
+                    Page.LIST.forEach(col=>{
+                        list_item[col.name] = Page.extract_list_value(
+                            {
+                                "folder": Page.App.collection.folders[release.folder_id],
+                                "release": release,
+                                "track": track,
+                                "raw_track": raw_track
+                            },
+                            col.path
+                        )
+                    });
+                    Page.App.collection.list.push(list_item);
+                };
+
+                release.details.tracklist.forEach((raw_track)=>{
+                    if (raw_track.type_=='heading') return;
+                    if (raw_track.type_=="index") 
+                        raw_track.sub_tracks.forEach(loadTrack)
+                    else
+                        loadTrack(raw_track);
                 });
                 i+=1;
                 setTimeout(trackr, 1);
@@ -350,6 +351,13 @@ let Page = {
 
                 if (Page._last_parent)
                     Page.render(Page._last_parent);
+                else {
+                    let scores = Page.App.collection.list.map(row=>{
+                        return [row.release_id, Page.App.collection.releases[row.release_id].score];
+                    });
+                    Page.App.score = scores.reduce((p,c)=>p+c[1], 0) / scores.length;
+                    console.log("Collection average score: ", Page.App.score);
+                }
 
                 Page.App.progress();
             };
@@ -358,7 +366,6 @@ let Page = {
     },
 
     finalize_download : function() {
-        Page.App.progress();
         Page.App.data['timestamp'] = Date.now();
         Page.App.DB.set(Page.App.username, JSON.stringify(Page.App.data)).then(()=>{
             Page.normalise_collection();
@@ -419,19 +426,38 @@ let Page = {
         Page.App.data.timestamp = Page.App.data.timestamp||(Date.now())
         let last_update = (new Date(Page.App.data.timestamp)).toISOString();
 
+        // check out newly added releases
         let new_releases = Page._releases.filter((release)=>{
             return (new Date(Date.parse(release.date_added))).toISOString() >= last_update;
         });
-
         console.log("New releases detected: ", new_releases.length);
+
+        // find deleted releases
+        let available_releases = {};
+        Page._releases.forEach(item=>{available_releases[item.id]=1});
+        Page.App.data['release_details'] = Page.App.data['release_details']||[];
+        let total_details = Page.App.data['release_details'].length;
+        Page.App.data['release_details'] = Page.App.data['release_details'].filter(item=>item.id in available_releases)
+        if (Page.App.data['release_details'].length < total_details)
+            alert(`Deleted releases detected: ${total_details - Page.App.data['release_details'].length}`);
+
+        // set new vresion of releases (new ratings, all new changes etc..)
+        Page.App.data['releases'] = Page._releases;
+
         if (new_releases.length) {
-            Page.App.data['releases'] = Page.App.data['releases']||[];
+            // drop new releases
+            available_releases = {};
+            new_releases.forEach(item=>{available_releases[item.id]=1});
+            Page.App.data['releases'] = Page.App.data['releases'].filter(item=>!(item.id in available_releases))
+
+            // add them back to the end of the list
             new_releases.forEach((release)=>{
                 Page.App.data['releases'].push(release);
             });
             Page._download_release_info(true);
         } else {
             alert("No new releases detected");
+            Page.App.progress();
         };
     },
 
@@ -472,19 +498,19 @@ let Page = {
         parent.innerHTML = "";
 
         let controls = document.createElement("div");
-        controls.className="collection-controls";
+        controls.className = "collection-controls";
         
-        let button = document.createElement("button");
-        button.innerText = "Reload";
-        button.onclick = (e)=>Page._download_data();
-        controls.appendChild(button);
+        let buttonReload = document.createElement("button");
+        buttonReload.innerText = "Reload";
+        buttonReload.className = "settings-button";
+        buttonReload.onclick = (e)=>Page._download_data();
+        controls.appendChild(buttonReload);
 
-        controls.appendChild(document.createTextNode("  "));
-
-        button = document.createElement("button");
-        button.innerText = "Update";
-        button.onclick = (e)=>Page._download_data(true);
-        controls.appendChild(button);
+        let buttonUpdate = document.createElement("button");
+        buttonUpdate.innerText = "Update";
+        buttonUpdate.className = "settings-button";
+        buttonUpdate.onclick = (e)=>Page._download_data(true);
+        controls.appendChild(buttonUpdate);
 
         parent.appendChild(controls);
         parent.appendChild(document.createElement("hr"));
