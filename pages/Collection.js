@@ -203,7 +203,9 @@ let Page = {
         return (
                 name
                 .replaceAll(/[ÃÂãâ¶]+/g,'')
-            )
+                .replaceAll('&',' and ')
+                .replaceAll(/ +/g,' ')
+            ).trim();
     },
 
     normalise_collection : function() {
@@ -430,16 +432,17 @@ let Page = {
         let new_releases = Page._releases.filter((release)=>{
             return (new Date(Date.parse(release.date_added))).toISOString() >= last_update;
         });
-        console.log("New releases detected: ", new_releases.length);
 
         // find deleted releases
         let available_releases = {};
         Page._releases.forEach(item=>{available_releases[item.id]=1});
         Page.App.data['release_details'] = Page.App.data['release_details']||[];
-        let total_details = Page.App.data['release_details'].length;
+        let was_details = Page.App.data['release_details'].length;
         Page.App.data['release_details'] = Page.App.data['release_details'].filter(item=>item.id in available_releases)
-        if (Page.App.data['release_details'].length < total_details)
-            alert(`Deleted releases detected: ${total_details - Page.App.data['release_details'].length}`);
+        let deleted = Math.max(0, was_details - Page.App.data['release_details'].length);
+        
+        if (new_releases.length||deleted)
+            alert(`Pending updates: new = ${new_releases.length} , deleted = ${deleted}`);
 
         // set new vresion of releases (new ratings, all new changes etc..)
         Page.App.data['releases'] = Page._releases;
@@ -455,9 +458,10 @@ let Page = {
                 Page.App.data['releases'].push(release);
             });
             Page._download_release_info(true);
+        } else if (deleted > 0) {
+            Page.finalize_download();
         } else {
             alert("No new releases detected");
-            Page.App.progress();
         };
     },
 
