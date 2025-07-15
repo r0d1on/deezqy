@@ -21,10 +21,10 @@ const menuItems = [
     { name: 'Help', page: PageHelp}
 ];
 
-let activeMenu = menuItems[0];
-let activeSubmenu = null;
-
 let App = {
+    activeMenu : menuItems[0],
+    activeSubmenu : null,
+
     matching_type: "author_and_title",
 
     progress: function(stage, stages, name) {
@@ -98,26 +98,26 @@ function renderMenu(skipSubmenus = false) {
     menu.innerHTML = '';
     menuItems.forEach(item => {
         const menuItem = document.createElement('div');
-        menuItem.className = 'menu-item' + (activeMenu === item ? ' active' : '');
+        menuItem.className = 'menu-item' + (App.activeMenu === item ? ' active' : '');
         menuItem.textContent = item.name;
         menuItem.onclick = () => {
-            activeMenu = item;
-            activeSubmenu = null;
+            App.activeMenu = item;
+            App.activeSubmenu = null;
             renderMenu();
             renderContent();
         };
         if (item.submenu) {
-            menuItem.classList.toggle('show-submenu', (activeMenu === item)&&(!skipSubmenus));
+            menuItem.classList.toggle('show-submenu', (App.activeMenu === item)&&(!skipSubmenus));
             const submenu = document.createElement('div');
             submenu.className = 'submenu';
             item.submenu.forEach(sub => {
                 const subItem = document.createElement('div');
-                subItem.className = 'submenu-item' + (activeSubmenu === sub ? ' active' : '');
+                subItem.className = 'submenu-item' + (App.activeSubmenu === sub ? ' active' : '');
                 subItem.textContent = sub;
                 subItem.onclick = (e) => {
                     e.stopPropagation();
-                    activeMenu = item;
-                    activeSubmenu = sub;
+                    App.activeMenu = item;
+                    App.activeSubmenu = sub;
                     renderContent();
                     renderMenu(true); // Hide submenus when submenu item is clicked
                 };
@@ -131,13 +131,13 @@ function renderMenu(skipSubmenus = false) {
 
 function renderContent() {
     const content = document.querySelector('.app-content');
-    if (activeMenu && activeMenu.submenu && activeSubmenu) {
-        content.textContent = `test ${activeSubmenu}`;
+    if (App.activeMenu && App.activeMenu.submenu && App.activeSubmenu) {
+        content.textContent = `test ${App.activeSubmenu}`;
     } else {
-        if (activeMenu.page) {
-            activeMenu.page.render(content);
+        if (App.activeMenu.page) {
+            App.activeMenu.page.render(content);
         } else {
-            content.textContent = `test ${activeMenu.name}`;
+            content.textContent = `test ${App.activeMenu.name}`;
         };
     }
 }

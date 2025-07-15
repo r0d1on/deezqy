@@ -202,8 +202,11 @@ let Page = {
     unify_name : function(name) {
         return (
                 name
+                .toLowerCase()
                 .replaceAll(/[ÃÂãâ¶]+/g,'')
                 .replaceAll('&',' and ')
+                .replaceAll(", the"," ")
+                .replaceAll("the "," ")
                 .replaceAll(/ +/g,' ')
             ).trim();
     },
@@ -255,7 +258,7 @@ let Page = {
 
                 let loadTrack = (raw_track)=>{
                     let track_artist = (
-                        ((raw_track.artists||[]).map(item=>item.name)).join(',')||
+                        Page.unify_name(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
                         release.details.artists_sort
                     );
                     raw_track.artist = track_artist;
@@ -351,8 +354,9 @@ let Page = {
                     };
                 });
 
-                if (Page._last_parent)
+                if ((Page._last_parent)&&(Page.App.activeMenu.page==Page)) {
                     Page.render(Page._last_parent);
+                }
                 else {
                     let scores = Page.App.collection.list.map(row=>{
                         return [row.release_id, Page.App.collection.releases[row.release_id].score];
@@ -462,6 +466,7 @@ let Page = {
             Page.finalize_download();
         } else {
             alert("No new releases detected");
+            Page.App.progress();
         };
     },
 
