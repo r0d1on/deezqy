@@ -381,29 +381,43 @@ let Page = {
 
     _download_release_info: function(update) {
         if (update) {
-            Page.App.data['release_details'] = Page.App.data['release_details']||[];
-            Page.App.progress(0, Page.App.data['releases'].length - Page.App.data['release_details'].length, "Updating release details");
+            Page.App.data['release_details'] = Page.App.data['release_details'] || [];
         } else {
             Page.App.data['release_details'] = [];
-            Page.App.progress(0, Page.App.data['releases'].length, "Loading release details");
         };
 
-        let getter = function() {
-            let ix = Page.App.data['release_details'].length;
-            // let master_id = Page.App.data.releases[ix].basic_information.master_id;
-            let release_id = Page.App.data.releases[ix].basic_information.id;
+        // increment: required details
+        let available = {};
+        Page.App.data['release_details'].forEach((item)=>{available[item.id] = 1});
+        Page.App._needed = Page.App.data['releases'].reduce((p, c)=>{
+            if (!(c.id in available)) {
+                p.push(c.id);
+            } else {
+                delete available[c.id];
+            };
+            return p;
+        }, []);
 
+        // decrement: obsolete details
+        if (Object.keys(available).length) {
+            Page.App.data['release_details'] = Page.App.data['release_details'].filter(item=>!(item.id in available));
+        };
+
+        if (available.length||Page.App._needed.length)
+            alert(`Pending updates: new = ${Page.App._needed.length} , deleted = ${Object.keys(available).length}`);
+
+        Page.App.progress(0, Page.App._needed.length, "Loading release details");
+
+        let getter = function() {
+            let ix = Page.App._needed.length;
+            let release_id = Page.App._needed.pop();
             Page.App.API.call(
                 //`https://api.discogs.com/masters/${master_id}`
                 `https://api.discogs.com/releases/${release_id}`
                 ,data => {
                     Page.App.data['release_details'].push(data);
-                    Page.App.progress(ix + 1);
-
-                    const details_loaded = Page.App.data['release_details'].length;
-                    const total_releases = Page.App.data['releases'].length;
-
-                    if (details_loaded < total_releases) {
+                    Page.App.progress(ix);
+                    if (Page.App._needed.length) {
                         setTimeout(getter, 400);
                     } else {
                         Page.finalize_download();
@@ -411,78 +425,24 @@ let Page = {
                 }
             );
         }
-        getter();
+        if (Page.App._needed.length)
+            getter();
+        else
+            Page.finalize_download();
     },
 
-    _download_releases : function() {
+    _download_releases : function(update) {
         Page.App.API.call(
             `https://api.discogs.com/users/${Page.App.username}/collection/folders/0/releases`
             ,data => {
                 Page.App.data['releases'] = data.releases;
-                setTimeout(Page._download_release_info, 1000);
+                setTimeout(()=>{Page._download_release_info(update)}, 1000);
             }
             ,0
             ,(stage, stages)=>{
                 Page.App.progress(stage, stages, "Loading releases");
             }
         );
-    },
-
-    _update_release_info: function () {
-        Page.App.data.timestamp = Page.App.data.timestamp||(Date.now())
-        let last_update = (new Date(Page.App.data.timestamp)).toISOString();
-
-        // check out newly added releases
-        let new_releases = Page._releases.filter((release)=>{
-            return (new Date(Date.parse(release.date_added))).toISOString() >= last_update;
-        });
-
-        // find deleted releases
-        let available_releases = {};
-        Page._releases.forEach(item=>{available_releases[item.id]=1});
-        Page.App.data['release_details'] = Page.App.data['release_details']||[];
-        let was_details = Page.App.data['release_details'].length;
-        Page.App.data['release_details'] = Page.App.data['release_details'].filter(item=>item.id in available_releases)
-        let deleted = Math.max(0, was_details - Page.App.data['release_details'].length);
-        
-        if (new_releases.length||deleted)
-            alert(`Pending updates: new = ${new_releases.length} , deleted = ${deleted}`);
-
-        // set new vresion of releases (new ratings, all new changes etc..)
-        Page.App.data['releases'] = Page._releases;
-
-        if (new_releases.length) {
-            // drop new releases
-            available_releases = {};
-            new_releases.forEach(item=>{available_releases[item.id]=1});
-            Page.App.data['releases'] = Page.App.data['releases'].filter(item=>!(item.id in available_releases))
-
-            // add them back to the end of the list
-            new_releases.forEach((release)=>{
-                Page.App.data['releases'].push(release);
-            });
-            Page._download_release_info(true);
-        } else if (deleted > 0) {
-            Page.finalize_download();
-        } else {
-            alert("No new releases detected");
-            Page.App.progress();
-        };
-    },
-
-    _update_releases() {
-        Page.App.API.call(
-            `https://api.discogs.com/users/${Page.App.username}/collection/folders/0/releases`
-            ,data => {
-                Page._releases = data.releases;
-                setTimeout(Page._update_release_info, 1000);
-            }
-            ,0
-            ,(stage, stages)=>{
-                Page.App.progress(stage, stages, "Loading releases");
-            }
-        );
-
     },
 
     _download_data : function(update) {
@@ -490,10 +450,7 @@ let Page = {
             `https://api.discogs.com/users/${Page.App.username}/collection/folders`
             ,data => {
                 Page.App.data['folders'] = data.folders;
-                if (update) 
-                    setTimeout(Page._update_releases, 1000);
-                else
-                    setTimeout(Page._download_releases, 1000);                    
+                setTimeout(()=>{Page._download_releases(update)}, 1000);                    
             }
             ,0
             ,(stage, stages)=>{
