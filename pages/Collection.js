@@ -14,8 +14,13 @@ let Page = {
     LIST : [
         {name: "release_folder", path: "folder.name", filter:"", maxwidth:"150px"},
 
-        {name: "release_id", path: "release.id", filter:"", maxwidth:"90px"},
+        {name: "release_id", path: "release.id", filter:"", maxwidth:"90px", render: (row)=>{
+            return `<a href="https://www.discogs.com/release/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
+        }},
         {name: "release_format", path: "release.format", filter:"", maxwidth:"65px"},
+        {name: "release_thumb", path: "release.basic_information.thumb", maxwidth:"65px", render: (row)=>{
+            return `<img style="width:60px;" src="${App.collection.releases[row['release_id']].basic_information.thumb}"/>`
+        }},
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
         {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px"},
@@ -27,7 +32,7 @@ let Page = {
         {name: "track_name", path: "track.title", filter:"", maxwidth:"250px"},
         {name: "track_time", path: "raw_track.duration", maxwidth:"80px"},
 
-        {name: "track_seen", path: "track.refs", render: (td, row)=>{
+        {name: "track_seen", path: "track.refs", render: (row)=>{
             let refs = row.track_seen;
             if ((refs===undefined)||(refs.length==0)) return;
 
@@ -45,33 +50,22 @@ let Page = {
                 html += `<b style="color:${((Math.abs(time_this-time_that) < 10) ? 'blue':'red')}" title="${ref.duration}">♪</b> `;
                 html += `<b><small><a href="#${ref.release_id}">${ref.format}</a> : ${ref.title}</small></b>`;
             });
-            td.innerHTML = html;
+            return html;
         }},
 
     ],
 
-    render_list : function(parent_div) {
-        parent_div.innerHTML = '';
-
-        if ((Page.App.collection==undefined)||(Page.App.collection.list==undefined)) {
-            return;
-        }
-
-        const table = document.createElement('table');
-        table.className = 'collection-table';
+    createTableHeaders: function(table, parent_div) {
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
-
         // add row counter
         const th = document.createElement('th');
         th.textContent = "#";
         headerRow.appendChild(th);
-
         // parsable columns
         Page.LIST.forEach((col, colIdx) => {
             const th = document.createElement('th');
             const span = document.createElement('span');
-
             let sortIndicator = '';
             if (Page.App.collection.list_sorted_by === col.name) {
                 sortIndicator = Page.App.collection.list_sorted_order === 1 ? ' ▲' : ' ▼';
@@ -88,7 +82,6 @@ let Page = {
                 Page.render_list(parent_div);
             };
             th.appendChild(span);
-
             if (col.filter !== undefined) {
                 const input = document.createElement('input');
                 input.type = 'text';
@@ -103,21 +96,86 @@ let Page = {
             }
             if (col.maxwidth)
                 th.style = `max-width:${col.maxwidth};overflow-x:auto;`;
-
             headerRow.appendChild(th);
         });
         thead.appendChild(headerRow);
         table.appendChild(thead);
+    },
+
+    create_row: function(table, row, index, seen_releases, cells) {
+        const tr = document.createElement('tr');
+        // add row number
+        const td = document.createElement('td');
+        if (!(row.release_id in seen_releases)) {
+            seen_releases[row.release_id] = 1;
+            td.innerHTML = `<small><b id="${row.release_id}">${index+1}</b></small>`;
+        } else {
+            td.textContent = index+1;
+        };
+        tr.appendChild(td);
+        let idc = td;
+
+        let depth = 0;
+        // add parsable columns
+        Page.LIST.forEach((col, ix) => {
+            const td = document.createElement('td');
+            let html = "";
+            if (col.render)
+                html = col.render(row)
+            else {
+                if (col.maxwidth)
+                    html = `<div style="max-width:${col.maxwidth};overflow-x:auto;">${row[col.name] !== undefined ? row[col.name] : ''}</div>`;
+                else
+                    html = row[col.name] !== undefined ? row[col.name] : '';
+            };
+
+            if (cells==null) {
+                td.innerHTML = html;
+            } else if (cells[ix]!=html) {
+                td.innerHTML = html;
+                cells[ix] = html;
+                for(let j=ix + 1; j<Page.LIST.length; j++) cells[j]=null;
+            } else {
+                depth = ix + 1;
+            };
+            tr.appendChild(td);
+        });
+        return [idc, tr, depth];
+    },
+
+    inject_clicker: function(td, id) {
+        let clicker = document.createElement("span");
+        clicker.className="clicker_symbol";
+        clicker.innerHTML = "⊞";
+        clicker.onclick=(e)=>{
+                Array.from(document.getElementsByClassName(`anc-${id}`)).forEach(
+                    Page.swap_visibility
+                );
+                e.target.innerHTML = {"⊞":"⊟","⊟":"⊞"}[e.target.innerHTML];
+        }
+        td.appendChild(clicker);
+        td.className="clicker";
+    },
+
+    render_list : function(parent_div) {
+        parent_div.innerHTML = '';
+        if ((Page.App.collection==undefined)||(Page.App.collection.list==undefined)) {
+            return;
+        }
+        const table = document.createElement('table');
+        table.className = 'collection-table';
+        Page.createTableHeaders(table, parent_div);
 
         // Sort collection inplace if needed
         const sortedColName = Page.App.collection.list_sorted_by;
         const sortedOrder = Page.App.collection.list_sorted_order || 1;
-        if (sortedColName) {
+        if ((sortedColName)&&(`${sortedColName}-${sortedOrder}`!=Page.App.collection._list_sorted_by)) {
             Page.App.collection.list.sort((a, b) => {
                 if (a[sortedColName] < b[sortedColName]) return -1 * sortedOrder;
                 if (a[sortedColName] > b[sortedColName]) return 1 * sortedOrder;
                 return 0;
             });
+            Page.App.collection._list_sorted_by = `${sortedColName}-${sortedOrder}`;
         }
 
         // Filter collection
@@ -137,38 +195,31 @@ let Page = {
         console.log("List average score: ", Page.App.score);
 
         // Fill table rows
+        let idc=0, tr=0, depth=0;
+        let anchor = {
+            id:0,
+            count:0,
+            td:null
+        };
         let seen_releases = {};
-        const tbody = document.createElement('tbody');
+        let cells = (Page.App.collection._list_sorted_by) ? null : {};
         filteredCollection.forEach((row, index) => {
-            const tr = document.createElement('tr');
-
-            // add row number
-            const td = document.createElement('td');
-            if (!(row.release_id in seen_releases)) {
-                seen_releases[row.release_id] = 1;
-                td.innerHTML = `<b id="${row.release_id}">${index+1}</b>`;
+            [idc, tr, depth] = Page.create_row(table, row, index, seen_releases, cells);
+            if (depth < 3) {
+                if ((anchor.td!==null)&&(anchor.count>0))
+                    Page.inject_clicker(anchor.td, anchor.id);
+                anchor.id += 1;
+                anchor.count = 0;
+                anchor.td = idc;
             } else {
-                td.textContent = index + 1;
+                tr.className = `anc-${anchor.id}`;
+                tr.style.display="none";
+                anchor.count+=1;
             };
-            tr.appendChild(td);
-
-            // add parsable columns
-            Page.LIST.forEach((col, ix) => {
-                const td = document.createElement('td');
-                if (col.render)
-                    col.render(td, row)
-                else {
-                    if (col.maxwidth)
-                        td.innerHTML = `<div style="max-width:${col.maxwidth};overflow-x:auto;">${row[col.name] !== undefined ? row[col.name] : ''}</div>`;
-                    else
-                        td.innerHTML = row[col.name] !== undefined ? row[col.name] : '';
-                }
-                    
-                tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
+            table.appendChild(tr);
         });
-        table.appendChild(tbody);
+        if ((anchor.td!==null)&&(anchor.count>0))
+            Page.inject_clicker(anchor.td, anchor.id);
         parent_div.appendChild(table);
     },
 
@@ -209,6 +260,14 @@ let Page = {
                 .replaceAll("the "," ")
                 .replaceAll(/ +/g,' ')
             ).trim();
+    },
+
+    swap_visibility : function(el) {
+        if (el.style.display === 'none') {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
     },
 
     normalise_collection : function() {
