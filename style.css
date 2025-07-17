@@ -349,3 +349,15 @@ input,button {
     align-items: center;
     margin: 24px 0 12px 0;
 }
+
+.clicker {
+    display: flex;
+    justify-content: space-between;
+    border: 2px deeppink dashed;
+    cursor:pointer;
+}
+
+.clicker_symbol {
+    color: blue;
+    padding-left: 10px;
+}
