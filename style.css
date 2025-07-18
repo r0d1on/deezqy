@@ -177,6 +177,10 @@ input,button {
     border-radius: 4px;
     box-sizing: border-box;
 }
+.collection-row-active  {
+    background: #ff8a00 !important;
+}
+
 .help-container {
     max-width: 700px;
     margin: 32px auto;
@@ -318,7 +322,10 @@ input,button {
 }
 .switch-right-text {
     font-size: 15px;
-    color: #ff8a00;
+    color: #e52e71;
+}
+.switch-active-text {
+    font-weight: bold;
 }
 .settings-group {
     display: flex;
@@ -360,4 +367,60 @@ input,button {
 .clicker_symbol {
     color: blue;
     padding-left: 10px;
+}
+.release-search-block {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    margin: 32px 0 18px 0;
+    justify-content: flex-start;
+    padding: 18px 0 18px 0;
+    border-bottom: 2px solid #e52e71;
+    background: #fff7f0;
+}
+.release-results-section {
+    margin: 0 0 24px 0;
+    padding: 18px 0 18px 0;
+    border-bottom: 2px solid #ff8a00;
+    max-height: 30vh;
+    overflow-y: auto;
+    background: #f9f6ff;
+}
+.release-info-section {
+    margin: 0 0 24px 0;
+    padding: 18px 0 18px 0;
+    background: #fff;
+}
+.release-results-table th, .release-results-table td {
+    font-size: 18px;
+    padding: 8px 10px;
+}
+.release-info-table th, .release-info-table td {
+    font-size: 18px;
+    padding: 8px 10px;
+}
+.release-result-row.active {
+    background: #ffe0f0 !important;
+}
+.app-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(128,128,128,0.45);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+}
+.app-overlay-gif {
+    width: 80px;
+    height: 80px;
+}
+
+.stars {
+    font-size: 10px;;
 }
