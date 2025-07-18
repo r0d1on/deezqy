@@ -65,22 +65,30 @@ let STORE = ((store)=>{
 
 let DB = {
     App : null,
+    compressed : false,
 
-    init : function(App) {
+    init : function(App, compressed = true) {
+        DB.compressed = compressed;
         DB.App = App;
         return DB;
     },
 
     get: function(key) {
-        return STORE('readonly', (store) => {
-            return IO.waitfor(store.get(key)).then((chunks)=>{
-                if (chunks===undefined) {
-                    return new Promise((resolve, reject)=>{resolve(null);}); // eslint-disable-line no-unused-vars
-                } else {
-                    return IO.decompress(chunks);
-                }
+        if (DB.compressed) {
+            return STORE('readonly', (store) => {
+                return IO.waitfor(store.get(key)).then((chunks)=>{
+                    if (chunks===undefined) {
+                        return new Promise((resolve, reject)=>{resolve(null);}); // eslint-disable-line no-unused-vars
+                    } else {
+                        return IO.decompress(chunks);
+                    }
+                });
             });
-        });
+        } else {
+            return IO.waitfor(store.get(key)).then((value)=>{
+                return new Promise((resolve, reject)=>{resolve(value);}); // eslint-disable-line no-unused-vars
+            });
+        };
     },
 
     set: function(key, value) {
@@ -91,17 +99,25 @@ let DB = {
             });
         }
 
-        return IO.compress(value).then((chunks)=>{
+        if (DB.compressed) {
+            return IO.compress(value).then((chunks)=>{
+                return STORE('readwrite', (store) => {
+                    let arr = new Uint8Array(chunks.reduce((a, v) => a + v.length, 0));
+                    chunks.reduce((a, v)=>{
+                        arr.set(v, a);
+                        return a + v.length;
+                    }, 0);
+                    store.put(arr, key);
+                    return IO.waitfor(store.transaction);
+                });
+            });
+        } else {
             return STORE('readwrite', (store) => {
-                let arr = new Uint8Array(chunks.reduce((a, v) => a + v.length, 0));
-                chunks.reduce((a, v)=>{
-                    arr.set(v, a);
-                    return a + v.length;
-                }, 0);
-                store.put(arr, key);
+                store.put(value, key);
                 return IO.waitfor(store.transaction);
             });
-        });
+        };
+
     }
 }
 

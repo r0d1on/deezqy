@@ -20,7 +20,7 @@ let API = {
     },
     
     call : function(url, callback, page, progress, errors) {
-        let token = App.token;
+        let token = API.App.token;
 
         (progress)&&(!page)&&(progress(0, 1));
 
@@ -39,11 +39,21 @@ let API = {
             if ((data.pagination) && (page!==null) && (data.pagination.page < data.pagination.pages)) {
                 (progress)&&(progress(data.pagination.page, data.pagination.pages));
                 API.call(url, next => {
-                    callback(union(data, next));
+                    try {
+                        callback(union(data, next));
+                    } catch (error) {
+                        console.error("Error while processing received data:", error)
+                        console.trace();
+                    }
                 }, data.pagination.page + 1, progress);
             } else {
                 (progress)&&(progress(1, 1));
-                callback(data);
+                try {
+                    callback(data);
+                } catch (error) {
+                    console.error("Error while processing received data:", error)
+                    console.trace();
+                }
             };
 
         }).catch(function (error) {

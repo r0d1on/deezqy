@@ -20,36 +20,50 @@ let Page = {
         let settingsContainer = document.createElement("div");
         settingsContainer.className = "settings-container";
 
-        // Credentials group
+        settingsContainer.appendChild(Page.renderCredentialsGroup());
+        settingsContainer.appendChild(Page.renderOtherSettingsGroup());
+
+        parent.appendChild(settingsContainer);
+    },
+
+    renderCredentialsGroup: function() {
         let credentialsGroup = document.createElement("div");
         credentialsGroup.className = "settings-group credentials-group";
-        let tokenLabel = document.createElement("label");
-        tokenLabel.textContent = "Discogs access token:";
-        tokenLabel.className = "settings-label";
-        credentialsGroup.appendChild(tokenLabel);
-        let i_token = document.createElement("input");
-        i_token.type = "text";
-        i_token.placeholder = "discogs personal access token";
-        i_token.value = Page.App.token || "";
-        i_token.className = "settings-input";
-        i_token.onchange = (e)=>{
-            Page.App.token = e.target.value;
-            Page.App.Cookie.set("token", e.target.value);
-        };
-        credentialsGroup.appendChild(i_token);
-        let usernameLabel = document.createElement("label");
-        usernameLabel.textContent = "User name:";
-        usernameLabel.className = "settings-label";
-        credentialsGroup.appendChild(usernameLabel);
-        let i_username = document.createElement("input");
-        i_username.type = "text";
-        i_username.value = Page.App.username || "";
-        i_username.className = "settings-input";
-        i_username.onchange = (e)=>{
-            Page.App.username = e.target.value;
-            Page.App.Cookie.set("username", e.target.value);
-        };
-        credentialsGroup.appendChild(i_username);
+        const creds = [
+            {
+                label: "Discogs access token:",
+                placeholder: "discogs personal access token",
+                value: Page.App.token || "",
+                onChange: (e) => {
+                    Page.App.token = e.target.value;
+                    Page.App.Cookie.set("token", e.target.value);
+                }
+            },
+            {
+                id: "username_input",
+                label: "User name:",
+                placeholder: "",
+                value: Page.App.username || "",
+                onChange: (e) => {
+                    Page.App.username = e.target.value;
+                    Page.App.Cookie.set("username", e.target.value);
+                }
+            }
+        ];
+        creds.forEach((c, i) => {
+            let label = document.createElement("label");
+            label.textContent = c.label;
+            label.className = "settings-label";
+            credentialsGroup.appendChild(label);
+            let input = document.createElement("input");
+            input.type = "text";
+            input.placeholder = c.placeholder;
+            input.value = c.value;
+            input.className = "settings-input";
+            input.onchange = c.onChange;
+            credentialsGroup.appendChild(input);
+            if (c.id) Page[c.id] = input;
+        });
         let button = document.createElement("button");
         button.innerText = "Test credentials";
         button.className = "settings-button";
@@ -61,7 +75,7 @@ let Page = {
                     ,data => {
                         Page.App.username = data.username;
                         Page.App.Cookie.set("username", data.username);
-                        i_username.value = data.username;
+                        Page.username_input.value = data.username;
                         Page.App.progress();
                         alert("Access token is valid, username found");
                     }
@@ -82,13 +96,14 @@ let Page = {
             }
         };
         credentialsGroup.appendChild(button);
-        settingsContainer.appendChild(credentialsGroup);
+        return credentialsGroup;
+    },
 
-        // Other settings group
+    renderOtherSettingsGroup: function() {
         let otherSettingsGroup = document.createElement("div");
         otherSettingsGroup.className = "settings-group other-settings-group";
         let matchTypeLabel = document.createElement("label");
-        matchTypeLabel.textContent = "Track matching type:";
+        matchTypeLabel.textContent = "Track match by:";
         matchTypeLabel.className = "settings-label";
         otherSettingsGroup.appendChild(matchTypeLabel);
         let switchContainer = document.createElement("div");
@@ -116,6 +131,13 @@ let Page = {
         switchInput.onchange = (e) => {
             knob.style.left = e.target.checked ? "30px" : "2px";
             Page.App.matching_type = e.target.checked ? "title_only" : "author_and_title";
+            if (e.target.checked) {
+                rightText.classList.add("switch-active-text")
+                leftText.classList.remove("switch-active-text")
+            } else {
+                leftText.classList.add("switch-active-text")
+                rightText.classList.remove("switch-active-text")
+            }
             setTimeout(Page.App.Pages.Collection.normalise_collection, 1);
         };
         switchLabel.appendChild(leftText);
@@ -130,9 +152,7 @@ let Page = {
         };
         switchContainer.appendChild(switchLabel);
         otherSettingsGroup.appendChild(switchContainer);
-        settingsContainer.appendChild(otherSettingsGroup);
-
-        parent.appendChild(settingsContainer);
+        return otherSettingsGroup;
     }
 }
 

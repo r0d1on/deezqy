@@ -1,29 +1,57 @@
 'use strict';
 
+import { ListRenderer } from '../misc/listRenderer.js';
+import { Utils } from '../misc/Utils.js';
+
 let Page = {
     App : null,
+    listFilters: [], // Store filter values for ListRenderer
     init : function(App) {
         Page.App = App;
         Page.App.data = {};
-        (Page.App.username)&&Page.App.DB.get(Page.App.username).then((data)=>{
-            Page.App.data = JSON.parse(data)||{};
-            Page.normalise_collection();
-        });
+        Page.App.showOverlay();
+        if (Page.App.username) {
+            Page.App.progress(0, 4, "Cache decompression");
+            Page.App.DB.get(Page.App.username).then((timestamp)=>{
+                Page.App.progress(1);
+                Page.App.data['timestamp'] = 1*timestamp;
+                Page.App.DB.get(Page.App.username + ".folders").then((folders)=>{
+                    Page.App.progress(2);
+                    Page.App.data.folders = JSON.parse(folders)||[];
+                    Page.App.DB.get(Page.App.username + ".releases").then((releases)=>{
+                        Page.App.progress(3);
+                        Page.App.data.releases = JSON.parse(releases)||[];
+                        Page.App.DB.get(Page.App.username + ".release_details").then((release_details)=>{
+                            Page.App.progress(4);
+                            Page.App.data.release_details = JSON.parse(release_details)||[];
+                            Page.normalise_collection();
+                            Page.App.hideOverlay();
+                        });
+                    });
+                });
+            });
+        }
     },
 
     LIST : [
-        {name: "release_folder", path: "folder.name", filter:"", maxwidth:"150px"},
+        {name: "release_folder", path: "folder.name", filter:"", maxwidth:"90px", render: (row)=>{
+            return row['release_folder'].toLowerCase().replace("uncategorized","*");
+        }},
 
         {name: "release_id", path: "release.id", filter:"", maxwidth:"90px", render: (row)=>{
             return `<a href="https://www.discogs.com/release/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
         }},
-        {name: "release_format", path: "release.format", filter:"", maxwidth:"65px"},
+
+        {name: "release_format", path: "release.format", filter:"", maxwidth:"65px", render: (row)=>{
+            return row['release_format'].toLowerCase().replace("|","\n");
+        }},
+
         {name: "release_thumb", path: "release.basic_information.thumb", maxwidth:"65px", render: (row)=>{
-            return `<img style="width:60px;" src="${App.collection.releases[row['release_id']].basic_information.thumb}"/>`
+            return `<img style="width:60px;" src="${Page.App.collection.releases[row['release_id']].basic_information.thumb}"/>`
         }},
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
-        {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px"},
+        {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
         {name: "release_score", path: "release.score", post:true, maxwidth:"80px"},
 
         //{name: "track_id", path: "track.id", filter:""},
@@ -55,225 +83,16 @@ let Page = {
 
     ],
 
-    createTableHeaders: function(table, parent_div) {
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        // add row counter
-        const th = document.createElement('th');
-        th.textContent = "#";
-        headerRow.appendChild(th);
-        // parsable columns
-        Page.LIST.forEach((col, colIdx) => {
-            const th = document.createElement('th');
-            const span = document.createElement('span');
-            let sortIndicator = '';
-            if (Page.App.collection.list_sorted_by === col.name) {
-                sortIndicator = Page.App.collection.list_sorted_order === 1 ? ' ▲' : ' ▼';
-            }
-            span.textContent = sortIndicator + col.name.split("_")[1];
-            span.style.cursor = 'pointer';
-            span.onclick = () => {
-                if (Page.App.collection.list_sorted_by === col.name) {
-                    Page.App.collection.list_sorted_order = -Page.App.collection.list_sorted_order;
-                } else {
-                    Page.App.collection.list_sorted_by = col.name;
-                    Page.App.collection.list_sorted_order = 1;
-                }
-                Page.render_list(parent_div);
-            };
-            th.appendChild(span);
-            if (col.filter !== undefined) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.value = col.filter.trim();
-                input.placeholder = '';
-                input.onchange = (e) => {
-                    Page.LIST[colIdx].filter = e.target.value.trim();
-                    Page.render_list(parent_div);
-                    Page.App.progress(-1);
-                };
-                th.appendChild(input);
-            }
-            if (col.maxwidth)
-                th.style = `max-width:${col.maxwidth};overflow-x:auto;`;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-    },
-
-    create_row: function(table, row, index, seen_releases, cells) {
-        const tr = document.createElement('tr');
-        // add row number
-        const td = document.createElement('td');
-        if (!(row.release_id in seen_releases)) {
-            seen_releases[row.release_id] = 1;
-            td.innerHTML = `<small><b id="${row.release_id}">${index+1}</b></small>`;
-        } else {
-            td.textContent = index+1;
-        };
-        tr.appendChild(td);
-        let idc = td;
-
-        let depth = 0;
-        // add parsable columns
-        Page.LIST.forEach((col, ix) => {
-            const td = document.createElement('td');
-            let html = "";
-            if (col.render)
-                html = col.render(row)
-            else {
-                if (col.maxwidth)
-                    html = `<div style="max-width:${col.maxwidth};overflow-x:auto;">${row[col.name] !== undefined ? row[col.name] : ''}</div>`;
-                else
-                    html = row[col.name] !== undefined ? row[col.name] : '';
-            };
-
-            if (cells==null) {
-                td.innerHTML = html;
-            } else if (cells[ix]!=html) {
-                td.innerHTML = html;
-                cells[ix] = html;
-                for(let j=ix + 1; j<Page.LIST.length; j++) cells[j]=null;
-            } else {
-                depth = ix + 1;
-            };
-            tr.appendChild(td);
-        });
-        return [idc, tr, depth];
-    },
-
-    inject_clicker: function(td, id) {
-        let clicker = document.createElement("span");
-        clicker.className="clicker_symbol";
-        clicker.innerHTML = "⊞";
-        clicker.onclick=(e)=>{
-                Array.from(document.getElementsByClassName(`anc-${id}`)).forEach(
-                    Page.swap_visibility
-                );
-                e.target.innerHTML = {"⊞":"⊟","⊟":"⊞"}[e.target.innerHTML];
-        }
-        td.appendChild(clicker);
-        td.className="clicker";
-    },
-
-    render_list : function(parent_div) {
-        parent_div.innerHTML = '';
-        if ((Page.App.collection==undefined)||(Page.App.collection.list==undefined)) {
-            return;
-        }
-        const table = document.createElement('table');
-        table.className = 'collection-table';
-        Page.createTableHeaders(table, parent_div);
-
-        // Sort collection inplace if needed
-        const sortedColName = Page.App.collection.list_sorted_by;
-        const sortedOrder = Page.App.collection.list_sorted_order || 1;
-        if ((sortedColName)&&(`${sortedColName}-${sortedOrder}`!=Page.App.collection._list_sorted_by)) {
-            Page.App.collection.list.sort((a, b) => {
-                if (a[sortedColName] < b[sortedColName]) return -1 * sortedOrder;
-                if (a[sortedColName] > b[sortedColName]) return 1 * sortedOrder;
-                return 0;
-            });
-            Page.App.collection._list_sorted_by = `${sortedColName}-${sortedOrder}`;
-        }
-
-        // Filter collection
-        const filteredCollection = Page.App.collection.list.filter(item => {
-            return Page.LIST.every(col => {
-                if (col.filter && col.filter.length > 0) {
-                    return (item[col.name] !== undefined && String(item[col.name]).toLowerCase().includes(col.filter.toLowerCase()));
-                }
-                return true;
-            });
-        });
-
-        let scores = filteredCollection.map(row=>{
-            return [row.release_id, Page.App.collection.releases[row.release_id].score];
-        });
-        Page.App.score = scores.reduce((p,c)=>p+c[1], 0) / scores.length;
-        console.log("List average score: ", Page.App.score);
-
-        // Fill table rows
-        let idc=0, tr=0, depth=0;
-        let anchor = {
-            id:0,
-            count:0,
-            td:null
-        };
-        let seen_releases = {};
-        let cells = (Page.App.collection._list_sorted_by) ? null : {};
-        filteredCollection.forEach((row, index) => {
-            [idc, tr, depth] = Page.create_row(table, row, index, seen_releases, cells);
-            if (depth < 3) {
-                if ((anchor.td!==null)&&(anchor.count>0))
-                    Page.inject_clicker(anchor.td, anchor.id);
-                anchor.id += 1;
-                anchor.count = 0;
-                anchor.td = idc;
-            } else {
-                tr.className = `anc-${anchor.id}`;
-                tr.style.display="none";
-                anchor.count+=1;
-            };
-            table.appendChild(tr);
-        });
-        if ((anchor.td!==null)&&(anchor.count>0))
-            Page.inject_clicker(anchor.td, anchor.id);
-        parent_div.appendChild(table);
-    },
-
-    extract_list_value : function(context, path) {
-        if (!Array.isArray(path)) 
-            path = path.split('.').reverse();
-
-        let key = path.pop();
-        let value = context[key];
-        if ((value==undefined)||(path.length==0))
-            return value;
-        else
-            return Page.extract_list_value(value, path)
-    },
-
-    unify_track_name : function(title) {
-        let replacements = [
-            [/["ÃÂãâ!\|]/g, ''],
-            [/[\,\.\(\)\-\/\?\\]/g],
-            ["in'( |$)", 'ing '], [/'t /g, "t "], [/'s /g, " is "],
-            [/'re /g, " are "], [/'m /g, " am "], [/'ll /g, " will "],
-            [/ +/g]
-        ];
-        let result = title.trim().toLowerCase();
-        replacements.forEach(r => {
-            result = result.replaceAll(r[0], ((r.length==2)?r[1]:" "));
-        });
-        return result.trim();
-    },
-
-    unify_name : function(name) {
-        return (
-                name
-                .toLowerCase()
-                .replaceAll(/[ÃÂãâ¶]+/g,'')
-                .replaceAll('&',' and ')
-                .replaceAll(", the"," ")
-                .replaceAll("the "," ")
-                .replaceAll(/ +/g,' ')
-            ).trim();
-    },
-
-    swap_visibility : function(el) {
-        if (el.style.display === 'none') {
-            el.style.display = '';
-        } else {
-            el.style.display = 'none';
-        }
-    },
-
     normalise_collection : function() {
         if ((Page.App.data==undefined)||(Page.App.data.release_details==undefined)) {
             return;
         }
+
+        if (Page._working) {
+            setTimeout(Page.normalise_collection, 500);
+            return;
+        };
+        Page._working = true;
 
         Page.App.collection={};
 
@@ -287,20 +106,20 @@ let Page = {
         Page.App.collection['releases'] = {};
         Page.App.data.releases.forEach((item)=>{
             let item_cpy = structuredClone(item);
-            item_cpy.basic_information.title = Page.unify_name(item_cpy.basic_information.title);
+            item_cpy.basic_information.title = Utils.unify_name(item_cpy.basic_information.title);
             Page.App.collection['releases'][item.id] = item_cpy;
         });
 
         // Inject release details into releases
         Page.App.data.release_details.forEach((item)=>{
             let item_cpy = structuredClone(item);
-            item_cpy.title = Page.unify_name(item_cpy.title);
-            item_cpy.artists_sort = Page.unify_name(item_cpy.artists_sort);
+            item_cpy.title = Utils.unify_name(item_cpy.title);
+            item_cpy.artists_sort = Utils.unify_name(item_cpy.artists_sort);
             Page.App.collection['releases'][item.id]['details'] = item_cpy;
         });
 
         // Extract and normalize all tracks for all releases, cross-reference links between tracks and releases
-        Page.App.progress(0, Object.keys(App.collection.releases).length, "Normalising the collection");
+        Page.App.progress(0, Object.keys(Page.App.collection.releases).length, "Normalising the collection");
         Page.App.collection.tracks_by_code = {};
         Page.App.collection.tracks = {};
         Page.App.collection.list = [];
@@ -317,16 +136,13 @@ let Page = {
 
                 let loadTrack = (raw_track)=>{
                     let track_artist = (
-                        Page.unify_name(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
+                        Utils.unify_name(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
                         release.details.artists_sort
                     );
                     raw_track.artist = track_artist;
 
-                    let track_title = Page.unify_track_name(raw_track.title);
-                    let track_code = track_title.toLowerCase();
-
-                    if (Page.App.matching_type=="author_and_title")
-                        track_code = `${Page.unify_track_name(track_artist).toLowerCase()}:${track_code}`;
+                    let track_title = raw_track.title;
+                    let track_code = Utils.getTrackCode(track_artist, track_title, Page.App.matching_type);
 
                     let id = Page.App.collection.tracks_by_code[track_code];
                     if (id === undefined) {
@@ -345,30 +161,25 @@ let Page = {
                     
                     track.releases.push(release_id);
                     track.refs.push({
-                            release_id: release_id,
-                            track_position: raw_track.position,
-                            artist: track_artist,
-                            format: format,
-                            title: release.details.title,
-                            duration: raw_track.duration
+                        release_id: release_id,
+                        track_position: raw_track.position,
+                        artist: track_artist,
+                        format: format,
+                        title: release.details.title,
+                        duration: raw_track.duration
                     });
 
                     raw_track.id = id;
                     raw_track.refs = track.refs;
 
                     // add flattened track info into collection items list
-                    let list_item = {};
-                    Page.LIST.forEach(col=>{
-                        list_item[col.name] = Page.extract_list_value(
-                            {
-                                "folder": Page.App.collection.folders[release.folder_id],
-                                "release": release,
-                                "track": track,
-                                "raw_track": raw_track
-                            },
-                            col.path
-                        )
-                    });
+                    let context = {
+                        "folder": Page.App.collection.folders[release.folder_id],
+                        "release": release,
+                        "track": track,
+                        "raw_track": raw_track
+                    };
+                    let list_item = ListRenderer.flattenItem(Page.LIST, context);
                     Page.App.collection.list.push(list_item);
                 };
 
@@ -403,7 +214,7 @@ let Page = {
                     if (col.post) {
                         Page.App.collection.list.forEach((row)=>{
                             let release = Page.App.collection.releases[row.release_id];
-                            row[col.name] = Page.extract_list_value(
+                            row[col.name] = ListRenderer.extract_list_value(
                                 {
                                     "release": release
                                 },
@@ -425,6 +236,7 @@ let Page = {
                 }
 
                 Page.App.progress();
+                Page._working = false;
             };
         };
         trackr();
@@ -432,9 +244,15 @@ let Page = {
 
     finalize_download : function() {
         Page.App.data['timestamp'] = Date.now();
-        Page.App.DB.set(Page.App.username, JSON.stringify(Page.App.data)).then(()=>{
-            Page.normalise_collection();
-            Page.render(Page._last_parent);
+        Page.App.DB.set(Page.App.username, JSON.stringify(Page.App.data['timestamp'])).then(()=>{
+            Page.App.DB.set(Page.App.username+".folders", JSON.stringify(Page.App.data.folders)).then(()=>{
+                Page.App.DB.set(Page.App.username+".releases", JSON.stringify(Page.App.data.releases)).then(()=>{
+                    Page.App.DB.set(Page.App.username+".release_details", JSON.stringify(Page.App.data.release_details)).then(()=>{
+                        Page.normalise_collection();
+                        Page.render(Page._last_parent);
+                    });
+                });
+            });
         });
     },
 
@@ -516,6 +334,29 @@ let Page = {
                 Page.App.progress(stage, stages, "Loading folders");
             }
         );
+    },
+ 
+    render_list : function(parent_div) {
+        parent_div.innerHTML = '';
+        if ((Page.App.collection==undefined)||(Page.App.collection.list==undefined)) {
+            return;
+        }
+        // Use ListRenderer for rendering, preserve filters
+        new ListRenderer({
+            data: Page.App.collection.list,
+            columns: Page.LIST,
+            parent: parent_div,
+            compact: true,
+            filters: Page.listFilters,
+            onFiltersChange: (filters) => {
+                Page.listFilters = filters.slice();
+            },
+            onScore: (score)=>{
+                Page.App.score = score;
+                Page.App.progress(-1);
+                console.log("List average score: ", score);
+            }
+        });
     },
 
     render : function(parent) {
