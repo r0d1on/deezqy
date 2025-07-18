@@ -2,7 +2,7 @@
 
 import {Page as PageSetup} from './pages/Setup.js';
 import {Page as PageCollection} from './pages/Collection.js';
-import {Page as PageRelease} from './pages/Release.js';
+import {Page as PageSearch} from './pages/Search.js';
 import {Page as PageHelp} from './pages/Help.js';
 
 import {API} from './api/discogs.js';
@@ -12,7 +12,7 @@ import {DB} from './api/db.js';
 const menuItems = [
     { name: 'Setup', page: PageSetup},
     { name: 'Collection',  page: PageCollection},
-    { name: 'Release',  page: PageRelease},
+    { name: 'Search',  page: PageSearch},
     /*
     { name: 'Analytics', submenu: [
         'growth over time',
@@ -23,7 +23,7 @@ const menuItems = [
     { name: 'Help', page: PageHelp}
 ];
 
-let App = {
+const App = {
     activeMenu : menuItems[0],
     activeSubmenu : null,
     matching_type: "author_and_title"

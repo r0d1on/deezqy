@@ -1,4 +1,4 @@
-// misc/Utils.js
+'use strict';
 
 const Utils = {
     unify_track_name: function(title) {

@@ -1,6 +1,6 @@
 'use strict';
 
-let Page = {
+const Page = {
     App : null,
     init : function(App) {
         Page.App = App;

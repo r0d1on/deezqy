@@ -49,7 +49,7 @@ let IO = {
     }
 };
 
-let STORE = ((store)=>{
+const STORE = ((store)=>{
     const db_request = indexedDB.open('deezqy');
     db_request.onupgradeneeded = (e) => {
         let db = e.target.result;
@@ -63,7 +63,7 @@ let STORE = ((store)=>{
     };
 })('store');
 
-let DB = {
+const DB = {
     App : null,
     compressed : false,
 
