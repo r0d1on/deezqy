@@ -3,7 +3,7 @@
 import { ListRenderer } from '../misc/listRenderer.js';
 import { Utils } from '../misc/Utils.js';
 
-let Page = {
+const Page = {
     App : null,
     listFilters: [], // Store filter values for ListRenderer
     init : function(App) {

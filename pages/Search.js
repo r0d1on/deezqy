@@ -3,7 +3,7 @@
 import { ListRenderer } from '../misc/listRenderer.js';
 import { Utils } from '../misc/Utils.js';
 
-let Page = {
+const Page = {
     SEARCH_LIST : [
         { name: 'release_id', path: 'result.id', render: row => `<a href="https://www.discogs.com/release/${row.release_id}" target="_blank">${row.release_id}</a>`, maxwidth: '90px'},
         { name: 'release_thumb', path: 'result.thumb', render: row=>{
