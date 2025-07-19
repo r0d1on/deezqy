@@ -1,27 +1,41 @@
 'use strict';
 
-const Page = {
-    App : null,
-    init : function(App) {
-        Page.App = App;
-        let token = Page.App.Cookie.get("token");
-        if (token) {
-            Page.App.token = token;
-        };
-        let username = Page.App.Cookie.get("username");
-        if (username) {
-            Page.App.username = username;
-        };
-    },
+/**
+ * Setup Page Module
+ * @module PageSetup
+ */
+import { uiFeedback } from '../misc/uiFeedback.js';
 
-    render : function(parent) {
+const Page = {
+    /** @type {object} */
+    appState: null,
+    /**
+     * Initialize the page with appState
+     * @param {object} appState - Centralized application state
+     */
+    init(appState) {
+        this.appState = appState;
+        let token = this.appState.Cookie.get("token");
+        if (token) {
+            this.appState.token = token;
+        }
+        let username = this.appState.Cookie.get("username");
+        if (username) {
+            this.appState.username = username;
+        }
+    },
+    /**
+     * Render the setup page
+     * @param {HTMLElement} parent - Parent DOM element
+     */
+    render(parent) {
         parent.innerHTML = "";
 
         let settingsContainer = document.createElement("div");
         settingsContainer.className = "settings-container";
 
-        settingsContainer.appendChild(Page.renderCredentialsGroup());
-        settingsContainer.appendChild(Page.renderOtherSettingsGroup());
+        settingsContainer.appendChild(this.renderCredentialsGroup());
+        settingsContainer.appendChild(this.renderOtherSettingsGroup());
 
         parent.appendChild(settingsContainer);
     },
@@ -33,21 +47,21 @@ const Page = {
             {
                 label: "Discogs access token:",
                 placeholder: "discogs personal access token",
-                value: Page.App.token || "",
+                value: this.appState.token || "",
                 onChange: (e) => {
-                    Page.App.token = e.target.value;
-                    Page.App.Cookie.set("token", e.target.value);
+                    this.appState.token = e.target.value;
+                    this.appState.Cookie.set("token", e.target.value);
                 }
             },
             {
                 id: "username_input",
                 label: "User name:",
                 placeholder: "",
-                value: Page.App.username || "",
+                value: this.appState.username || "",
                 onChange: (e) => {
-                    Page.App.username = e.target.value;
-                    Page.App.Cookie.set("username", e.target.value);
-                    Page.App.Pages.Collection.init();
+                    this.appState.username = e.target.value;
+                    this.appState.Cookie.set("username", e.target.value);
+                    this.appState.Pages.Collection.init();
                 }
             }
         ];
@@ -63,29 +77,29 @@ const Page = {
             input.className = "settings-input";
             input.onchange = c.onChange;
             credentialsGroup.appendChild(input);
-            if (c.id) Page[c.id] = input;
+            if (c.id) this[c.id] = input;
         });
         let button = document.createElement("button");
         button.innerText = "Test credentials";
         button.className = "settings-button";
         button.onclick = (e) => {
-            if ((Page.App.token)&&(!Page.App.username)) {
-                Page.App.progress(0,1,"Testing access token");
-                Page.App.API.call(
+            if ((this.appState.token)&&(!this.appState.username)) {
+                this.appState.progress(0,1,"Testing access token");
+                this.appState.API.call(
                     "https://api.discogs.com/oauth/identity"
                     ,data => {
-                        Page.username_input.value = data.username;
-                        Page.username_input.onchange({target:Page.username_input});
-                        Page.App.progress();
+                        this.username_input.value = data.username;
+                        this.username_input.onchange({target:this.username_input});
+                        this.appState.progress();
                     }
                 );
-            } else if (Page.App.username) {
-                Page.App.progress(0,1,"Testing username");
-                Page.App.API.call(
-                    `https://api.discogs.com/users/${Page.App.username}/collection/folders/0/releases`
+            } else if (this.appState.username) {
+                this.appState.progress(0,1,"Testing username");
+                this.appState.API.call(
+                    `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
                     ,data => {
                         const items = (data.pagination && data.pagination.items) || data.releases.length;
-                        Page.App.progress();
+                        this.appState.progress();
                         alert(`Username is valid, total items in collection size = ${items}`);
                     }
                     ,null
@@ -93,6 +107,7 @@ const Page = {
             } else {
                 alert("Specify access token or username at least");
             }
+            uiFeedback.showStatus('Credentials tested', 'success');
         };
         credentialsGroup.appendChild(button);
         return credentialsGroup;
@@ -123,13 +138,13 @@ const Page = {
         let rightText = document.createElement("span");
         rightText.textContent = "title only";
         rightText.className = "switch-right-text";
-        let matchType = Page.App.matching_type || "author_and_title";
+        let matchType = this.appState.matching_type || "author_and_title";
         switchInput.checked = (matchType === "title_only");
         knob.style.left = switchInput.checked ? "30px" : "2px";
-        Page.App.matching_type = switchInput.checked ? "title_only" : "author_and_title";
+        this.appState.matching_type = switchInput.checked ? "title_only" : "author_and_title";
         switchInput.onchange = (e) => {
             knob.style.left = e.target.checked ? "30px" : "2px";
-            Page.App.matching_type = e.target.checked ? "title_only" : "author_and_title";
+            this.appState.matching_type = e.target.checked ? "title_only" : "author_and_title";
             if (e.target.checked) {
                 rightText.classList.add("switch-active-text")
                 leftText.classList.remove("switch-active-text")
@@ -137,7 +152,7 @@ const Page = {
                 leftText.classList.add("switch-active-text")
                 rightText.classList.remove("switch-active-text")
             }
-            setTimeout(Page.App.Pages.Collection.normaliseCollection, 100);
+            setTimeout(this.appState.Pages.Collection.normaliseCollection, 100);
         };
         switchLabel.appendChild(leftText);
         switchLabel.appendChild(slider);
@@ -155,4 +170,4 @@ const Page = {
     }
 }
 
-export {Page};
+export { Page };

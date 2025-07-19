@@ -2,38 +2,52 @@
 
 import { ListRenderer } from '../misc/listRenderer.js';
 import { Utils } from '../misc/Utils.js';
+import { uiFeedback } from '../misc/uiFeedback.js';
 
+/**
+ * Search Page Module
+ * @module PageSearch
+ */
 const Page = {
-    LIST : [
-        { name: 'release_id', path: 'result.id', render: row => `<a href="https://www.discogs.com/release/${row.release_id}" target="_blank">${row.release_id}</a>`, maxwidth: '90px'},
-        { name: 'release_thumb', path: 'result.thumb', render: row=>{
-                return `<img src="${row.release_thumb}" style="width:100px;">`
-            }
-        },
-        { name: 'release_year', path: 'result.year', maxwidth: '80px'},
-        { name: 'release_country', path: 'result.country', maxwidth: '100px'},
-        { name: 'release_format', path: 'result.format', maxwidth: '180px', render: (row)=>{
-            return row['release_format'].join(", ")
-        }}, //[]
-        { name: 'release_genre', path: 'result.genre', maxwidth: '180px', render: (row)=>{
-            return row['release_genre'].join(", ")
-        }}, // []
-        { name: 'release_style', path: 'result.style', maxwidth: '180px', render: (row)=>{
-            return row['release_style'].join(", ")
-        }}, // []
-        { name: 'release_title', path: 'result.title'},
-        { name: 'release_having', path: 'result.community.have'},
-        { name: 'release_wanting', path: 'result.community.want'},
-        { name: 'release_demand', path: (row)=>{
-            return Math.round((row['release_wanting'] / (row['release_wanting'] + row['release_having']))*1000)/10
+    /**
+     * Column definitions for search results table.
+     */
+    LIST: [
+        { name: 'release_id', path: 'result.id', maxwidth: '90px', render: (row) => {
+            return `<a href="https://www.discogs.com/release/${row.release_id}" target="_blank">${row.release_id}</a>`; 
         }},
-        { name: 'release_have', path: 'result.user_data.in_collection', render: (row)=>{
-            return (row['release_have']?"✅":"")
+        { name: 'release_thumb', path: 'result.thumb', maxwidth: '100px' , render: (row) => {
+            return `<img src="${row.release_thumb}" style="width:100px;">`;
         }},
-        { name: 'release_want', path: 'result.user_data.in_wantlist', render:row=>{
-            return (row['release_want']?"✅":"")
+        { name: 'release_year', path: 'result.year', maxwidth: '80px' },
+        { name: 'release_country', path: 'result.country', maxwidth: '100px' },
+        { name: 'release_format', path: 'result.format', maxwidth: '180px', render: (row) => {
+            return (row['release_format']||[]).join(", "); 
         }},
+        { name: 'release_genre', path: 'result.genre', maxwidth: '180px', render: (row) => {
+            return (row['release_genre']||[]).join(", ");
+        }},
+        { name: 'release_style', path: 'result.style', maxwidth: '180px', render: (row) => {
+            return (row['release_style']||[]).join(", ");
+        }},
+        { name: 'release_title', path: 'result.title' },
+        { name: 'release_having', path: 'result.community.have' },
+        { name: 'release_wanting', path: 'result.community.want' },
+        { name: 'release_demand', path: (row) => {
+            var have = row['release_having'] || 0;
+            var want = row['release_wanting'] || 0;
+            return (have + want) ? Math.round((want / (want + have)) * 1000) / 10 : '';
+        }},
+        { name: 'release_have', path: 'result.user_data.in_collection', render: (row) => {
+            return (row['release_have'] ? "\u2705" : "");
+        }},
+        { name: 'release_want', path: 'result.user_data.in_wantlist', render: (row) => {
+            return (row['release_want'] ? "\u2705" : "");
+        }}
     ],
+    /**
+     * Search input field definitions.
+     */
     searchFields: [
         { placeholder: 'Title', ref: 'inputTitle', param: 'release_title' },
         { placeholder: 'Artist', ref: 'inputArtist', param: 'artist' },
@@ -42,24 +56,27 @@ const Page = {
         { placeholder: 'Format', ref: 'inputFormat', param: 'format' },
         { placeholder: 'Barcode', ref: 'inputBarcode', param: 'barcode' }
     ],
-
-    App : null,
-    searchResults: [],
-    searchFilters: [], // Store filter values for ListRenderer
-    selectedRelease: null,
-
-    init: function(App) {
-        Page.App = App;
+    /** @type {object} */
+    appState: null,
+    /**
+     * Initialize the page with appState
+     * @param {object} appState - Centralized application state
+     */
+    init(appState) {
+        this.appState = appState;
     },
-
-    render: function(parent) {
+    /**
+     * Render the search page
+     * @param {HTMLElement} parent - Parent DOM element
+     */
+    render(parent) {
         parent.innerHTML = '';
         // Search block
         let searchBlock = document.createElement('div');
         searchBlock.className = 'release-search-block';
         // Arrange inputs in rows of 3
         let rowDiv = null;
-        Page.searchFields.forEach((f, idx) => {
+        this.searchFields.forEach((f, idx) => {
             if (idx % 3 === 0) {
                 rowDiv = document.createElement('div');
                 rowDiv.className = 'search-row';
@@ -70,14 +87,14 @@ const Page = {
             input.placeholder = f.placeholder;
             input.className = 'settings-input';
             rowDiv.appendChild(input);
-            Page[f.ref] = input;
+            this[f.ref] = input;
         });
         // Add search button to the last row
         let searchBtn = document.createElement('button');
         searchBtn.innerText = 'Search';
         searchBtn.className = 'settings-button';
         searchBtn.onclick = () => {
-            Page.search();
+            this.search();
         };
         rowDiv.appendChild(searchBtn);
         parent.appendChild(searchBlock);
@@ -90,16 +107,16 @@ const Page = {
         infoSection.className = 'release-info-section';
         parent.appendChild(infoSection);
         // Store for later use
-        Page._resultsSection = resultsSection;
-        Page._infoSection = infoSection;
+        this._resultsSection = resultsSection;
+        this._infoSection = infoSection;
     },
     
     renderSearchResults: function(results) {
-        Page._resultsSection.innerHTML = '';
+        this._resultsSection.innerHTML = '';
 
         let flattened = results.map((result, index)=>{
             let row = ListRenderer.flattenItem(
-                Page.LIST,
+                this.LIST,
                 {
                     "result" : result
                 }
@@ -111,59 +128,60 @@ const Page = {
         // Use ListRenderer for results, preserve filters
         new ListRenderer({
             data: flattened,
-            columns: Page.LIST,
-            parent: Page._resultsSection,
+            columns: this.LIST,
+            parent: this._resultsSection,
             compact: false,
-            filters: Page.searchFilters,
+            filters: this.searchFilters,
             onFiltersChange: (filters) => {
-                Page.searchFilters = filters.slice();
+                this.searchFilters = filters.slice();
             },
             onRowClick: (row, target) => {
-                Page.fetchReleaseInfo(row.release_id);
-                Array.from(Page._resultsSection.querySelectorAll('tr')).forEach(tr=>tr.classList.remove('collection-row-active'));
+                this.fetchReleaseInfo(row.release_id);
+                Array.from(this._resultsSection.querySelectorAll('tr')).forEach(tr=>tr.classList.remove('collection-row-active'));
                 target.classList.add('collection-row-active'); // +1 for header row
             }
         });
     },
 
     search: function() {
-        if (!Page.App.token) {
+        if (!this.appState.token) {
             alert("Search works only if access token is provided!");
             return;
         };
-        Page._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">Searching...</div>';
+        this._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">Searching...</div>';
         let url = 'https://api.discogs.com/database/search?type=release';
-        Page.searchFields.forEach(f => {
-            const val = Page[f.ref] && Page[f.ref].value;
+        this.searchFields.forEach(f => {
+            const val = this[f.ref] && this[f.ref].value;
             if (val) url += `&${f.param}=${encodeURIComponent(val)}`;
         });
-        Page.App.API.call(
+        this.appState.API.call(
             url,
             data => {
                 if (data.results.length === 0) {
-                    Page._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">No results found.</div>';
+                    this._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">No results found.</div>';
                     return;
                 }
-                Page.renderSearchResults(data.results);
+                this.renderSearchResults(data.results);
+                uiFeedback.showStatus('Search complete', 'success');
             }
         );
     },
 
     fetchReleaseInfo: function(releaseId) {
-        Page._infoSection.innerHTML = '<div style="font-size:18px;color:#888">Loading release info...</div>';
-        Page.App.API.call(
+        this._infoSection.innerHTML = '<div style="font-size:18px;color:#888">Loading release info...</div>';
+        this.appState.API.call(
             `https://api.discogs.com/releases/${releaseId}`,
             data => {
-                Page.selectedRelease = data;
-                Page.renderReleaseInfo();
+                this.selectedRelease = data;
+                this.renderReleaseInfo();
             }
         );
     },
 
     renderReleaseInfo: function() {
-        const data = Page.selectedRelease;
+        const data = this.selectedRelease;
         if (!data) {
-            Page._infoSection.innerHTML = '';
+            this._infoSection.innerHTML = '';
             return;
         }
         let html = '<table class="collection-table release-info-table">';
@@ -194,12 +212,12 @@ const Page = {
             raw_track.artist = track_artist;
 
             let track_title = raw_track.title;
-            let track_code = Utils.getTrackCode(track_artist, track_title, Page.App.matching_type);
-            let track_id = App.collection.tracks_by_code[track_code];
+            let track_code = Utils.getTrackCode(track_artist, track_title, this.appState.matching_type);
+            let track_id = this.appState.collection.tracks_by_code[track_code];
             let list_refs="";
             if (track_id!==undefined) {
                 list_refs = "<ul><li>";
-                list_refs+= Page.App.collection.tracks[track_id].refs.map((ref)=>{
+                list_refs+= this.appState.collection.tracks[track_id].refs.map((ref)=>{
                     return `(${ref.release_id}) ${ref.format} :: ${ref.artist} - ${ref.title} [${ref.track_position} // ${ref.duration}]`;
                 }).join("</li><li>")
                 list_refs += "</li></ul>";
@@ -213,8 +231,8 @@ const Page = {
             </tr>`;
         });
         html += '</table>';
-        Page._infoSection.innerHTML = html;
+        this._infoSection.innerHTML = html;
     }
 }
 
-export {Page};
+export { Page };

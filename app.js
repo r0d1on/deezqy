@@ -9,6 +9,9 @@ import {API} from './api/discogs.js';
 import {Cookie} from './api/cookie.js';
 import {DB} from './api/db.js';
 
+import appState from './appState.js';
+import { uiFeedback } from './misc/uiFeedback.js';
+
 const menuItems = [
     { name: 'Setup', page: PageSetup},
     { name: 'Collection',  page: PageCollection},
@@ -23,11 +26,9 @@ const menuItems = [
     { name: 'Help', page: PageHelp}
 ];
 
-const App = {
-    activeMenu : menuItems[0],
-    activeSubmenu : null,
-    matching_type: "author_and_title"
-};
+appState.ui.activeMenu = menuItems[0];
+appState.ui.activeSubmenu = null;
+appState.matchingType = "author_and_title";
 
 // Overlay element for processing indication
 function createOverlay() {
@@ -39,25 +40,25 @@ function createOverlay() {
     document.body.appendChild(overlay);
 }
 
-App.showOverlay = function() {
+appState.showOverlay = function() {
     let overlay = document.getElementById('app-overlay');
     if (!overlay) createOverlay();
     overlay = document.getElementById('app-overlay');
     overlay.style.display = 'flex';
 };
 
-App.hideOverlay = function() {
+appState.hideOverlay = function() {
     let overlay = document.getElementById('app-overlay');
     if (overlay) overlay.style.display = 'none';
 };
 
-App.progress =  function(stage, stages, name) {
+appState.progress =  function(stage, stages, name) {
     function idle() {
         progressSection.innerHTML = 'Idle';
-        if (App.data) {
-            progressSection.innerHTML += " | DB timestamp: " + (new Date(App.data.timestamp||0)).toISOString();
-            progressSection.innerHTML += " | Releases: " + (App.data.releases||[]).length;
-            progressSection.innerHTML += " | Uniqueness score: " + ((Math.round(App.score*100)/100)||"-")+"%";
+        if (appState.data) {
+            progressSection.innerHTML += " | DB timestamp: " + (new Date(appState.data.timestamp||0)).toISOString();
+            progressSection.innerHTML += " | Releases: " + (appState.data.releases||[]).length;
+            progressSection.innerHTML += " | Uniqueness score: " + ((Math.round(appState.score*100)/100)||"-")+"%";
         };
     };
 
@@ -94,23 +95,23 @@ App.progress =  function(stage, stages, name) {
     progressSection.innerHTML = `<span>${name}</span> <div class='progress-bar'><div class='progress-bar-fill' style='width:${percent}%;'></div></div> <span>${percent}%</span>`;
 }
 
-App.init = function() {
+appState.init = function() {
     setTimeout(()=>{
-        App.API = API.init(App);
-        App.Cookie = Cookie.init(App);
-        App.DB = DB.init(App, false);
+        appState.API = API.init(appState);
+        appState.Cookie = Cookie.init(appState);
+        appState.DB = DB.init(appState, false);
 
-        App.Pages = {};
+        appState.Pages = {};
         menuItems.forEach(item => {
             if (item.page) {
-                item.page.init(App);
-                App.Pages[item.name] = item.page;
+                item.page.init(appState);
+                appState.Pages[item.name] = item.page;
             };
             if (item.submenu) {
                 item.submenu.forEach(sub => {
                     if (sub.page) {
-                        sub.page.init(App);
-                        App.Pages[item.name + ":" + item.submenu] = sub.page;
+                        sub.page.init(appState);
+                        appState.Pages[item.name + ":" + item.submenu] = sub.page;
                     };
                 });
             };
@@ -120,56 +121,95 @@ App.init = function() {
     }, 1);
 }
 
+/**
+ * Application menu item definition.
+ * @typedef {Object} MenuItem
+ * @property {string} name - Menu item name.
+ * @property {Object} [page] - Associated page module.
+ * @property {Array<string|Object>} [submenu] - Submenu items.
+ */
+
+/**
+ * Render the main menu and submenus.
+ * @param {boolean} [skipSubmenus=false] - If true, hides submenus after click.
+ */
 function renderMenu(skipSubmenus = false) {
     const menu = document.querySelector('.menu');
     menu.innerHTML = '';
     menuItems.forEach(item => {
-        const menuItem = document.createElement('div');
-        menuItem.className = 'menu-item' + (App.activeMenu === item ? ' active' : '');
-        menuItem.textContent = item.name;
-        menuItem.onclick = () => {
-            App.activeMenu = item;
-            App.activeSubmenu = null;
-            renderMenu();
-            renderContent();
-        };
-        if (item.submenu) {
-            menuItem.classList.toggle('show-submenu', (App.activeMenu === item)&&(!skipSubmenus));
-            const submenu = document.createElement('div');
-            submenu.className = 'submenu';
-            item.submenu.forEach(sub => {
-                const subItem = document.createElement('div');
-                subItem.className = 'submenu-item' + (App.activeSubmenu === sub ? ' active' : '');
-                subItem.textContent = sub;
-                subItem.onclick = (e) => {
-                    e.stopPropagation();
-                    App.activeMenu = item;
-                    App.activeSubmenu = sub;
-                    renderContent();
-                    renderMenu(true); // Hide submenus when submenu item is clicked
-                };
-                submenu.appendChild(subItem);
-            });
-            menuItem.appendChild(submenu);
-        }
-        menu.appendChild(menuItem);
+        menu.appendChild(createMenuItem(item, skipSubmenus));
     });
 }
 
+/**
+ * Create a menu item DOM element, including submenus if present.
+ * @param {MenuItem} item - The menu item definition.
+ * @param {boolean} skipSubmenus - Whether to skip showing submenus.
+ * @returns {HTMLElement} The menu item element.
+ */
+function createMenuItem(item, skipSubmenus) {
+    const menuItem = document.createElement('div');
+    menuItem.className = 'menu-item' + (appState.ui.activeMenu === item ? ' active' : '');
+    menuItem.textContent = item.name;
+    menuItem.onclick = () => {
+        appState.ui.activeMenu = item;
+        appState.ui.activeSubmenu = null;
+        renderMenu();
+        renderContent();
+    };
+    if (item.submenu) {
+        menuItem.classList.toggle('show-submenu', (appState.ui.activeMenu === item) && (!skipSubmenus));
+        menuItem.appendChild(createSubmenu(item, skipSubmenus));
+    }
+    return menuItem;
+}
+
+/**
+ * Create a submenu DOM element for a menu item.
+ * @param {MenuItem} item - The menu item with submenu.
+ * @param {boolean} skipSubmenus - Whether to skip showing submenus.
+ * @returns {HTMLElement} The submenu element.
+ */
+function createSubmenu(item, skipSubmenus) {
+    const submenu = document.createElement('div');
+    submenu.className = 'submenu';
+    item.submenu.forEach(sub => {
+        const subItem = document.createElement('div');
+        subItem.className = 'submenu-item' + (appState.ui.activeSubmenu === sub ? ' active' : '');
+        subItem.textContent = sub;
+        subItem.onclick = (e) => {
+            e.stopPropagation();
+            appState.ui.activeMenu = item;
+            appState.ui.activeSubmenu = sub;
+            renderContent();
+            renderMenu(true); // Hide submenus when submenu item is clicked
+        };
+        submenu.appendChild(subItem);
+    });
+    return submenu;
+}
+
+/**
+ * Render the main content area based on the active menu and submenu.
+ */
 function renderContent() {
     const content = document.querySelector('.app-content');
-    if (App.activeMenu && App.activeMenu.submenu && App.activeSubmenu) {
-        content.textContent = `test ${App.activeSubmenu}`;
+    if (appState.ui.activeMenu && appState.ui.activeMenu.submenu && appState.ui.activeSubmenu) {
+        content.textContent = `test ${appState.ui.activeSubmenu}`;
     } else {
-        if (App.activeMenu.page) {
-            App.activeMenu.page.render(content);
+        if (appState.ui.activeMenu.page) {
+            appState.ui.activeMenu.page.render(content);
         } else {
-            content.textContent = `test ${App.activeMenu.name}`;
-        };
+            content.textContent = `test ${appState.ui.activeMenu.name}`;
+        }
     }
 }
 
+/**
+ * Initialize the application after DOM is loaded.
+ */
 document.addEventListener('DOMContentLoaded', () => {
-    App.init();
-    window.App = App;
+    appState.init();
+    window.appState = appState;
+    uiFeedback.showStatus('App loaded', 'success');
 });
