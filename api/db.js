@@ -80,13 +80,15 @@ const DB = {
                     if (chunks===undefined) {
                         return new Promise((resolve, reject)=>{resolve(null);}); // eslint-disable-line no-unused-vars
                     } else {
-                        return IO.decompress(chunks);
+                        return JSON.parse(IO.decompress(chunks)||"null");
                     }
                 });
             });
         } else {
-            return IO.waitfor(store.get(key)).then((value)=>{
-                return new Promise((resolve, reject)=>{resolve(value);}); // eslint-disable-line no-unused-vars
+            return STORE('readonly', (store) => {
+                return IO.waitfor(store.get(key)).then((value)=>{
+                    return new Promise((resolve, reject)=>{resolve(value);}); // eslint-disable-line no-unused-vars
+                });
             });
         };
     },
@@ -100,6 +102,7 @@ const DB = {
         }
 
         if (DB.compressed) {
+            value = JSON.stringify(value);
             return IO.compress(value).then((chunks)=>{
                 return STORE('readwrite', (store) => {
                     let arr = new Uint8Array(chunks.reduce((a, v) => a + v.length, 0));
@@ -117,7 +120,6 @@ const DB = {
                 return IO.waitfor(store.transaction);
             });
         };
-
     }
 }
 

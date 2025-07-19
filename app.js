@@ -55,7 +55,7 @@ App.progress =  function(stage, stages, name) {
     function idle() {
         progressSection.innerHTML = 'Idle';
         if (App.data) {
-            progressSection.innerHTML += " | DB timestamp: " + (new Date(App.data.timestamp)).toISOString();
+            progressSection.innerHTML += " | DB timestamp: " + (new Date(App.data.timestamp||0)).toISOString();
             progressSection.innerHTML += " | Releases: " + (App.data.releases||[]).length;
             progressSection.innerHTML += " | Uniqueness score: " + ((Math.round(App.score*100)/100)||"-")+"%";
         };
@@ -98,7 +98,7 @@ App.init = function() {
     setTimeout(()=>{
         App.API = API.init(App);
         App.Cookie = Cookie.init(App);
-        App.DB = DB.init(App);
+        App.DB = DB.init(App, false);
 
         App.Pages = {};
         menuItems.forEach(item => {

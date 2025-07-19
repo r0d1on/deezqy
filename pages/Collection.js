@@ -17,19 +17,21 @@ const Page = {
                 Page.App.data['timestamp'] = 1*timestamp;
                 Page.App.DB.get(Page.App.username + ".folders").then((folders)=>{
                     Page.App.progress(2);
-                    Page.App.data.folders = JSON.parse(folders)||[];
+                    Page.App.data.folders = folders||[];
                     Page.App.DB.get(Page.App.username + ".releases").then((releases)=>{
                         Page.App.progress(3);
-                        Page.App.data.releases = JSON.parse(releases)||[];
+                        Page.App.data.releases = releases||[];
                         Page.App.DB.get(Page.App.username + ".release_details").then((release_details)=>{
                             Page.App.progress(4);
-                            Page.App.data.release_details = JSON.parse(release_details)||[];
+                            Page.App.data.release_details = release_details||[];
                             Page.normalise_collection();
                             Page.App.hideOverlay();
                         });
                     });
                 });
             });
+        } else {
+            Page.App.hideOverlay();           
         }
     },
 
@@ -174,7 +176,7 @@ const Page = {
 
                     // add flattened track info into collection items list
                     let context = {
-                        "folder": Page.App.collection.folders[release.folder_id],
+                        "folder": Page.App.collection.folders[release.folder_id]||{name:`${release.folder_id||"---"}`},
                         "release": release,
                         "track": track,
                         "raw_track": raw_track
@@ -244,10 +246,10 @@ const Page = {
 
     finalize_download : function() {
         Page.App.data['timestamp'] = Date.now();
-        Page.App.DB.set(Page.App.username, JSON.stringify(Page.App.data['timestamp'])).then(()=>{
-            Page.App.DB.set(Page.App.username+".folders", JSON.stringify(Page.App.data.folders)).then(()=>{
-                Page.App.DB.set(Page.App.username+".releases", JSON.stringify(Page.App.data.releases)).then(()=>{
-                    Page.App.DB.set(Page.App.username+".release_details", JSON.stringify(Page.App.data.release_details)).then(()=>{
+        Page.App.DB.set(Page.App.username, Page.App.data['timestamp']).then(()=>{
+            Page.App.DB.set(Page.App.username+".folders", Page.App.data.folders).then(()=>{
+                Page.App.DB.set(Page.App.username+".releases", Page.App.data.releases).then(()=>{
+                    Page.App.DB.set(Page.App.username+".release_details", Page.App.data.release_details).then(()=>{
                         Page.normalise_collection();
                         Page.render(Page._last_parent);
                     });
