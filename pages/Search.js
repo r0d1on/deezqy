@@ -76,11 +76,13 @@ const Page = {
         searchBlock.className = 'release-search-block';
         // Arrange inputs in rows of 3
         let rowDiv = null;
+        let firstRowDiv = null;
         this.searchFields.forEach((f, idx) => {
             if (idx % 3 === 0) {
                 rowDiv = document.createElement('div');
                 rowDiv.className = 'search-row';
                 searchBlock.appendChild(rowDiv);
+                if (idx === 0) firstRowDiv = rowDiv;
             }
             let input = document.createElement('input');
             input.type = 'text';
@@ -97,6 +99,16 @@ const Page = {
             this.search();
         };
         rowDiv.appendChild(searchBtn);
+        // Add clean button to the first row
+        let cleanBtn = document.createElement('button');
+        cleanBtn.innerText = 'Clean';
+        cleanBtn.className = 'settings-button';
+        cleanBtn.onclick = () => {
+            this.searchFields.forEach(f => {
+                if (this[f.ref]) this[f.ref].value = '';
+            });
+        };
+        if (firstRowDiv) firstRowDiv.appendChild(cleanBtn);
         parent.appendChild(searchBlock);
         // Results section
         let resultsSection = document.createElement('div');
@@ -145,7 +157,7 @@ const Page = {
 
     search: function() {
         if (!this.appState.token) {
-            alert("Search works only if access token is provided!");
+            uiFeedback.showStatus("Search works only if access token is provided!", "warning");
             return;
         };
         this._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">Searching...</div>';
@@ -162,7 +174,7 @@ const Page = {
                     return;
                 }
                 this.renderSearchResults(data.results);
-                uiFeedback.showStatus('Search complete', 'success');
+                // uiFeedback.showStatus('Search complete', 'success');
             }
         );
     },

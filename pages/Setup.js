@@ -100,14 +100,14 @@ const Page = {
                     ,data => {
                         const items = (data.pagination && data.pagination.items) || data.releases.length;
                         this.appState.progress();
-                        alert(`Username is valid, total items in collection size = ${items}`);
+                        uiFeedback.showStatus(`Username is valid, total items in collection size = ${items}`, 'success');
                     }
                     ,null
                 );
             } else {
-                alert("Specify access token or username at least");
+                uiFeedback.showStatus("Specify access token or username at least", "warning");
             }
-            uiFeedback.showStatus('Credentials tested', 'success');
+            // uiFeedback.showStatus('Testing credentials', 'success');
         };
         credentialsGroup.appendChild(button);
         return credentialsGroup;

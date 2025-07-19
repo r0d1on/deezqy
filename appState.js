@@ -13,7 +13,8 @@
  * @property {string} username - Discogs username
  * @property {string} matchingType - Track matching mode
  * @property {Object} ui - UI state (activeMenu, activeSubmenu, etc.)
- * @property {number} score - Collection uniqueness score
+ * @property {number} score - Currently filtered collection uniqueness score
+ * @property {number} rowCount - Currently filtered collection rows count
  */
 
 const appState = {
@@ -30,7 +31,8 @@ const appState = {
     activeMenu: null,
     activeSubmenu: null
   },
-  score: 0
+  score: 0,
+  rowCount: 0
 };
 
 export default appState;
