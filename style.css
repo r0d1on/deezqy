@@ -267,7 +267,6 @@ input,button {
     border: none;
     cursor: pointer;
     font-weight: bold;
-    margin-top: 18px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     transition: background 0.2s;
 }
@@ -354,7 +353,9 @@ input,button {
     gap: 18px;
     justify-content: flex-start;
     align-items: center;
-    margin: 24px 0 12px 0;
+    margin-bottom: 20px;
+    padding-top:20px;
+    padding-left:20px;
 }
 
 .clicker {
@@ -370,14 +371,21 @@ input,button {
 }
 .release-search-block {
     display: flex;
-    flex-direction: row;
-    gap: 16px;
-    align-items: center;
-    margin: 32px 0 18px 0;
+    flex-direction: column;
+    gap: 0;
+    align-items: flex-start;
+    margin: 18px 0 12px 0;
     justify-content: flex-start;
-    padding: 18px 0 18px 0;
+    padding: 8px 0 8px 0;
     border-bottom: 2px solid #e52e71;
     background: #fff7f0;
+}
+.search-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    margin-bottom: 0;
+    align-items: center;
 }
 .release-results-section {
     margin: 0 0 24px 0;

@@ -47,6 +47,7 @@ const Page = {
                 onChange: (e) => {
                     Page.App.username = e.target.value;
                     Page.App.Cookie.set("username", e.target.value);
+                    Page.App.Pages.Collection.init();
                 }
             }
         ];
@@ -73,11 +74,9 @@ const Page = {
                 Page.App.API.call(
                     "https://api.discogs.com/oauth/identity"
                     ,data => {
-                        Page.App.username = data.username;
-                        Page.App.Cookie.set("username", data.username);
                         Page.username_input.value = data.username;
+                        Page.username_input.onchange({target:Page.username_input});
                         Page.App.progress();
-                        alert("Access token is valid, username found");
                     }
                 );
             } else if (Page.App.username) {
@@ -138,7 +137,7 @@ const Page = {
                 leftText.classList.add("switch-active-text")
                 rightText.classList.remove("switch-active-text")
             }
-            setTimeout(Page.App.Pages.Collection.normalise_collection, 1);
+            setTimeout(Page.App.Pages.Collection.normaliseCollection, 100);
         };
         switchLabel.appendChild(leftText);
         switchLabel.appendChild(slider);

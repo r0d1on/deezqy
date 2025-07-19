@@ -128,7 +128,8 @@ class ListRenderer {
                 input.value = this.filters[colIdx] || '';
                 input.placeholder = '';
                 input.onchange = (e) => {
-                    this.setFilter(colIdx, e.target.value.trim());
+                    e.target.value = e.target.value.trim().toLowerCase();
+                    this.setFilter(colIdx, e.target.value);
                 };
                 th.appendChild(input);
             }
@@ -219,8 +220,14 @@ class ListRenderer {
         (this.onScore)&&(this.onScore(score));
     }
 
-    static extract_list_value(context, path) {
-        if (!Array.isArray(path)) 
+    static extractListValue(context, path, row) {
+        if (path===undefined) 
+            return undefined;
+
+        if (typeof(path)=='function')
+            return path(row, context)
+
+        if (typeof(path)=='string')
             path = path.split('.').reverse();
 
         let key = path.pop();
@@ -228,13 +235,13 @@ class ListRenderer {
         if ((value==undefined)||(path.length==0))
             return value;
         else
-            return ListRenderer.extract_list_value(value, path)
+            return ListRenderer.extractListValue(value, path)
     }
 
     static flattenItem(columns, context) {
         let list_item = {};
         columns.forEach(col => {
-            list_item[col.name] = ListRenderer.extract_list_value(context, col.path);
+            list_item[col.name] = ListRenderer.extractListValue(context, col.path, list_item);
         });
         return list_item;
     }
