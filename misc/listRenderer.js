@@ -261,7 +261,7 @@ class ListRenderer {
         this.parent.appendChild(table);
 
         let score = scores.reduce((p, c)=>p + c, 0) / scores.length;
-        (this.onScore)&&(this.onScore(score));
+        (this.onScore)&&(this.onScore(score, scores.length));
     }
     /**
      * Extract list value from context using a path.

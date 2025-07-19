@@ -247,6 +247,7 @@ const Page = {
                     console.log("Collection average score: ", this.appState.score);
                 }
 
+                this.appState.rowCount = this.appState.data.releases.length;
                 this.appState.progress();
                 Page._working = false;
                 uiFeedback.showStatus('Collection loaded', 'success');
@@ -336,7 +337,7 @@ const Page = {
 
     _download_data : function(update) {
         if (!this.appState.username) {
-            alert("Search works only if user name is provided!");
+            uiFeedback.showStatus("DB update works only if user name is provided!", "warning");
             return;
         };        
         this.appState.API.call(
@@ -367,10 +368,10 @@ const Page = {
             onFiltersChange: (filters) => {
                 Page.listFilters = filters.slice();
             },
-            onScore: (score)=>{
+            onScore: (score, rows)=>{
                 this.appState.score = score;
+                this.appState.rowCount = rows;
                 this.appState.progress(-1);
-                console.log("List average score: ", score);
             }
         });
     },

@@ -57,8 +57,8 @@ appState.progress =  function(stage, stages, name) {
         progressSection.innerHTML = 'Idle';
         if (appState.data) {
             progressSection.innerHTML += " | DB timestamp: " + (new Date(appState.data.timestamp||0)).toISOString();
-            progressSection.innerHTML += " | Releases: " + (appState.data.releases||[]).length;
-            progressSection.innerHTML += " | Uniqueness score: " + ((Math.round(appState.score*100)/100)||"-")+"%";
+            progressSection.innerHTML += " | Rows: " + appState.rowCount||"-";
+            progressSection.innerHTML += " | U-Score: " + ((Math.round(appState.score*100)/100)||"-")+"%";
         };
     };
 
@@ -211,5 +211,5 @@ function renderContent() {
 document.addEventListener('DOMContentLoaded', () => {
     appState.init();
     window.appState = appState;
-    uiFeedback.showStatus('App loaded', 'success');
+    // uiFeedback.showStatus('App loaded', 'success');
 });
