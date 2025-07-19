@@ -1,20 +1,24 @@
 'use strict';
 
-let Page = {
-    App : null,
-    init : function(App) {
-        Page.App = App;
-        let token = Page.App.Cookie.get("token");
-        if (token) {
-            Page.App.token = token;
-        };
-        let username = Page.App.Cookie.get("username");
-        if (username) {
-            Page.App.username = username;
-        };
+/**
+ * Help Page Module
+ * @module PageHelp
+ */
+const Page = {
+    /** @type {object} */
+    appState: null,
+    /**
+     * Initialize the page with appState
+     * @param {object} appState - Centralized application state
+     */
+    init(appState) {
+        this.appState = appState;
     },
-
-    render : function(parent) {
+    /**
+     * Render the help page
+     * @param {HTMLElement} parent - Parent DOM element
+     */
+    render(parent) {
         parent.innerHTML = `
         <div class="help-container">
             <h2>How to use Discogs Collection Analytics</h2>
@@ -73,4 +77,4 @@ let Page = {
     }
 }
 
-export {Page};
+export { Page };

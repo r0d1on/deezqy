@@ -1,7 +1,20 @@
-// ListRenderer.js
-// Generic list/table renderer with filtering and sorting
-
+/**
+ * Generic list/table renderer with filtering and sorting.
+ * @class ListRenderer
+ */
 class ListRenderer {
+    /**
+     * Create a ListRenderer instance.
+     * @param {object} options - Renderer options.
+     * @param {Array} options.data - Data to render.
+     * @param {Array} options.columns - Column definitions.
+     * @param {HTMLElement} options.parent - Parent DOM element.
+     * @param {function} [options.onRowClick] - Row click handler.
+     * @param {boolean} [options.compact] - Compact mode.
+     * @param {Array} [options.filters] - Initial filter values.
+     * @param {function} [options.onFiltersChange] - Filters change handler.
+     * @param {function} [options.onScore] - Score handler.
+     */
     constructor({ data, columns, parent, onRowClick, compact, filters, onFiltersChange, onScore }) {
         this.data = data;
         this.columns = columns;
@@ -16,7 +29,10 @@ class ListRenderer {
         this.sortedOrder = 1;
         this.render();
     }
-
+    /**
+     * Inject a clicker element for expandable rows.
+     * @param {object} anchor - Anchor object with td and id.
+     */
     injectClicker(anchor) {
         if ((anchor.td==null)||(anchor.count==0))
             return;
@@ -39,24 +55,37 @@ class ListRenderer {
         anchor.td.appendChild(clicker);
         anchor.td.className = "clicker";
     }
-
+    /**
+     * Set new data and re-render.
+     * @param {Array} data - New data array.
+     */
     setData(data) {
         this.data = data;
         this.render();
     }
-
+    /**
+     * Set new columns and re-render.
+     * @param {Array} columns - New columns array.
+     */
     setColumns(columns) {
         this.columns = columns;
         this.filters = columns.map(col => col.filter || '');
         this.render();
     }
-
+    /**
+     * Set a filter value and re-render.
+     * @param {number} idx - Filter index.
+     * @param {string} value - Filter value.
+     */
     setFilter(idx, value) {
         this.filters[idx] = value;
         if (this.onFiltersChange) this.onFiltersChange(this.filters);
         this.render();
     }
-
+    /**
+     * Sort by a column and re-render.
+     * @param {number} colIdx - Column index.
+     */
     sortBy(colIdx) {
         if (this.sortedBy === colIdx) {
             this.sortedOrder = -this.sortedOrder;
@@ -66,7 +95,10 @@ class ListRenderer {
         }
         this.render();
     }
-
+    /**
+     * Get filtered and sorted data.
+     * @returns {Array} Filtered and sorted data.
+     */
     getFilteredSortedData() {
         this.sorted = this.data || [];
 
@@ -103,7 +135,10 @@ class ListRenderer {
 
         return filtered;
     }
-
+    /**
+     * Create table headers.
+     * @param {HTMLElement} table - Table element.
+     */
     createTableHeaders(table) {
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
@@ -140,7 +175,14 @@ class ListRenderer {
         thead.appendChild(headerRow);
         table.appendChild(thead);
     }
-
+    /**
+     * Create a table row.
+     * @param {object} row - Row data.
+     * @param {number} index - Row index.
+     * @param {object} seen_releases - Seen releases tracker.
+     * @param {Array} cells - Cached cell values.
+     * @returns {Array} Contains idc, tr, and depth.
+     */
     createTableRow(row, index, seen_releases, cells) {
         const tr = document.createElement('tr');
         // add row number
@@ -186,7 +228,9 @@ class ListRenderer {
         }
         return [idc, tr, depth];
     }
-
+    /**
+     * Render the list/table.
+     */
     render() {
         this.parent.innerHTML = '';
         const table = document.createElement('table');
@@ -219,7 +263,13 @@ class ListRenderer {
         let score = scores.reduce((p, c)=>p + c, 0) / scores.length;
         (this.onScore)&&(this.onScore(score));
     }
-
+    /**
+     * Extract list value from context using a path.
+     * @param {object} context - Context object.
+     * @param {string|function} path - Path or function to extract value.
+     * @param {object} row - Row data.
+     * @returns {any} Extracted value.
+     */
     static extractListValue(context, path, row) {
         if (path===undefined) 
             return undefined;
@@ -237,7 +287,12 @@ class ListRenderer {
         else
             return ListRenderer.extractListValue(value, path)
     }
-
+    /**
+     * Flatten an item into a list item object.
+     * @param {Array} columns - Column definitions.
+     * @param {object} context - Context object.
+     * @returns {object} Flattened list item.
+     */
     static flattenItem(columns, context) {
         let list_item = {};
         columns.forEach(col => {
