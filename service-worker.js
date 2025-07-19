@@ -3,14 +3,14 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open('deezqy-cache-v1').then(cache => {
       return cache.addAll([
-        '/',
-        '/index.html',
-        '/style.css',
-        '/app.js',
-        '/appState.js',
-        '/favicon.svg',
-        '/manifest.webmanifest',
-        '/loader.gif',
+        '',
+        'index.html',
+        'style.css',
+        'app.js',
+        'appState.js',
+        'favicon.svg',
+        'manifest.webmanifest',
+        'loader.gif',
         // Add more assets as needed
       ]);
     })
