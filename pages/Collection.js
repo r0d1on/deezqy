@@ -7,8 +7,9 @@ const Page = {
     App : null,
     listFilters: [], // Store filter values for ListRenderer
     init : function(App) {
-        Page.App = App;
+        Page.App = App||Page.App;
         Page.App.data = {};
+        Page.App.collection = {};
         Page.App.showOverlay();
         if (Page.App.username) {
             Page.App.progress(0, 4, "Cache decompression");
@@ -24,7 +25,7 @@ const Page = {
                         Page.App.DB.get(Page.App.username + ".release_details").then((release_details)=>{
                             Page.App.progress(4);
                             Page.App.data.release_details = release_details||[];
-                            Page.normalise_collection();
+                            Page.normaliseCollection();
                             Page.App.hideOverlay();
                         });
                     });
@@ -85,13 +86,13 @@ const Page = {
 
     ],
 
-    normalise_collection : function() {
+    normaliseCollection : function() {
         if ((Page.App.data==undefined)||(Page.App.data.release_details==undefined)) {
             return;
         }
 
         if (Page._working) {
-            setTimeout(Page.normalise_collection, 500);
+            setTimeout(Page.normaliseCollection, 500);
             return;
         };
         Page._working = true;
@@ -108,15 +109,15 @@ const Page = {
         Page.App.collection['releases'] = {};
         Page.App.data.releases.forEach((item)=>{
             let item_cpy = structuredClone(item);
-            item_cpy.basic_information.title = Utils.unify_name(item_cpy.basic_information.title);
+            item_cpy.basic_information.title = Utils.unifyName(item_cpy.basic_information.title);
             Page.App.collection['releases'][item.id] = item_cpy;
         });
 
         // Inject release details into releases
         Page.App.data.release_details.forEach((item)=>{
             let item_cpy = structuredClone(item);
-            item_cpy.title = Utils.unify_name(item_cpy.title);
-            item_cpy.artists_sort = Utils.unify_name(item_cpy.artists_sort);
+            item_cpy.title = Utils.unifyName(item_cpy.title);
+            item_cpy.artists_sort = Utils.unifyName(item_cpy.artists_sort);
             Page.App.collection['releases'][item.id]['details'] = item_cpy;
         });
 
@@ -138,7 +139,7 @@ const Page = {
 
                 let loadTrack = (raw_track)=>{
                     let track_artist = (
-                        Utils.unify_name(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
+                        Utils.unifyName(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
                         release.details.artists_sort
                     );
                     raw_track.artist = track_artist;
@@ -216,7 +217,7 @@ const Page = {
                     if (col.post) {
                         Page.App.collection.list.forEach((row)=>{
                             let release = Page.App.collection.releases[row.release_id];
-                            row[col.name] = ListRenderer.extract_list_value(
+                            row[col.name] = ListRenderer.extractListValue(
                                 {
                                     "release": release
                                 },
@@ -250,7 +251,7 @@ const Page = {
             Page.App.DB.set(Page.App.username+".folders", Page.App.data.folders).then(()=>{
                 Page.App.DB.set(Page.App.username+".releases", Page.App.data.releases).then(()=>{
                     Page.App.DB.set(Page.App.username+".release_details", Page.App.data.release_details).then(()=>{
-                        Page.normalise_collection();
+                        Page.normaliseCollection();
                         Page.render(Page._last_parent);
                     });
                 });

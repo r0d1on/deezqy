@@ -4,10 +4,10 @@ import { ListRenderer } from '../misc/listRenderer.js';
 import { Utils } from '../misc/Utils.js';
 
 const Page = {
-    SEARCH_LIST : [
+    LIST : [
         { name: 'release_id', path: 'result.id', render: row => `<a href="https://www.discogs.com/release/${row.release_id}" target="_blank">${row.release_id}</a>`, maxwidth: '90px'},
         { name: 'release_thumb', path: 'result.thumb', render: row=>{
-                return `<img src="${row.release_thumb}" style="width:50px;">`
+                return `<img src="${row.release_thumb}" style="width:100px;">`
             }
         },
         { name: 'release_year', path: 'result.year', maxwidth: '80px'},
@@ -24,15 +24,31 @@ const Page = {
         { name: 'release_title', path: 'result.title'},
         { name: 'release_having', path: 'result.community.have'},
         { name: 'release_wanting', path: 'result.community.want'},
-        { name: 'release_have', path: 'result.user_data.in_collection'},
-        { name: 'release_want', path: 'result.user_data.in_wantlist'},
+        { name: 'release_demand', path: (row)=>{
+            return Math.round((row['release_wanting'] / (row['release_wanting'] + row['release_having']))*1000)/10
+        }},
+        { name: 'release_have', path: 'result.user_data.in_collection', render: (row)=>{
+            return (row['release_have']?"✅":"")
+        }},
+        { name: 'release_want', path: 'result.user_data.in_wantlist', render:row=>{
+            return (row['release_want']?"✅":"")
+        }},
+    ],
+    searchFields: [
+        { placeholder: 'Title', ref: 'inputTitle', param: 'release_title' },
+        { placeholder: 'Artist', ref: 'inputArtist', param: 'artist' },
+        { placeholder: 'Track', ref: 'inputTrack', param: 'track' },
+        { placeholder: 'Country', ref: 'inputCountry', param: 'country' },
+        { placeholder: 'Format', ref: 'inputFormat', param: 'format' },
+        { placeholder: 'Barcode', ref: 'inputBarcode', param: 'barcode' }
     ],
 
     App : null,
     searchResults: [],
     searchFilters: [], // Store filter values for ListRenderer
     selectedRelease: null,
-    init : function(App) {
+
+    init: function(App) {
         Page.App = App;
     },
 
@@ -41,31 +57,29 @@ const Page = {
         // Search block
         let searchBlock = document.createElement('div');
         searchBlock.className = 'release-search-block';
-        // Use a config array for inputs
-        const searchFields = [
-            { placeholder: 'Title', ref: 'inputTitle' },
-            { placeholder: 'Artist', ref: 'inputArtist' },
-            { placeholder: 'Barcode', ref: 'inputBarcode' }
-        ];
-        searchFields.forEach(f => {
+        // Arrange inputs in rows of 3
+        let rowDiv = null;
+        Page.searchFields.forEach((f, idx) => {
+            if (idx % 3 === 0) {
+                rowDiv = document.createElement('div');
+                rowDiv.className = 'search-row';
+                searchBlock.appendChild(rowDiv);
+            }
             let input = document.createElement('input');
             input.type = 'text';
             input.placeholder = f.placeholder;
             input.className = 'settings-input';
-            searchBlock.appendChild(input);
+            rowDiv.appendChild(input);
             Page[f.ref] = input;
         });
+        // Add search button to the last row
         let searchBtn = document.createElement('button');
         searchBtn.innerText = 'Search';
         searchBtn.className = 'settings-button';
         searchBtn.onclick = () => {
-            Page.search(
-                Page.inputTitle.value,
-                Page.inputArtist.value,
-                Page.inputBarcode.value
-            );
+            Page.search();
         };
-        searchBlock.appendChild(searchBtn);
+        rowDiv.appendChild(searchBtn);
         parent.appendChild(searchBlock);
         // Results section
         let resultsSection = document.createElement('div');
@@ -80,12 +94,12 @@ const Page = {
         Page._infoSection = infoSection;
     },
     
-    renderSearchResults(results) {
+    renderSearchResults: function(results) {
         Page._resultsSection.innerHTML = '';
 
         let flattened = results.map((result, index)=>{
             let row = ListRenderer.flattenItem(
-                Page.SEARCH_LIST,
+                Page.LIST,
                 {
                     "result" : result
                 }
@@ -97,7 +111,7 @@ const Page = {
         // Use ListRenderer for results, preserve filters
         new ListRenderer({
             data: flattened,
-            columns: Page.SEARCH_LIST,
+            columns: Page.LIST,
             parent: Page._resultsSection,
             compact: false,
             filters: Page.searchFilters,
@@ -112,12 +126,17 @@ const Page = {
         });
     },
 
-    search: function(title, artist, barcode) {
+    search: function() {
+        if (!Page.App.token) {
+            alert("Search works only if access token is provided!");
+            return;
+        };
         Page._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">Searching...</div>';
         let url = 'https://api.discogs.com/database/search?type=release';
-        if (title) url += `&release_title=${encodeURIComponent(title)}`;
-        if (artist) url += `&artist=${encodeURIComponent(artist)}`;
-        if (barcode) url += `&barcode=${encodeURIComponent(barcode)}`;
+        Page.searchFields.forEach(f => {
+            const val = Page[f.ref] && Page[f.ref].value;
+            if (val) url += `&${f.param}=${encodeURIComponent(val)}`;
+        });
         Page.App.API.call(
             url,
             data => {
@@ -157,17 +176,20 @@ const Page = {
             {name:"lowest_price", path:"lowest_price"},
             {name:"num_for_sale", path:"num_for_sale"}
         ].forEach(col=>{
-            html += `<tr><td>${col.name}</td><td>${ListRenderer.extract_list_value(data, col.path)}</td></tr>`;
+            html += `<tr><td>${col.name}</td><td>${ListRenderer.extractListValue(data, col.path)}</td></tr>`;
         });
-        html += `<tr><td>label</td><td>${(data.labels||[]).map(l=>l.name).join(', ')}</td></tr>`;
+        html += `<tr>
+            <td>label</td>
+            <td>${(data.labels||[]).map(l=>l.name).join(', ')}</td>
+        </tr>`;
         html += "</table>"
 
         html += '<table class="collection-table release-info-table">';
         html += `<tr><th colspan="3">Tracklist</th></tr>`;
         (data.tracklist||[]).forEach(raw_track => {
             let track_artist = (
-                Utils.unify_name(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
-                Utils.unify_name(data.artists_sort)
+                Utils.unifyName(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
+                Utils.unifyName(data.artists_sort)
             );
             raw_track.artist = track_artist;
 
@@ -182,7 +204,13 @@ const Page = {
                 }).join("</li><li>")
                 list_refs += "</li></ul>";
             };
-            html += `<tr><td>${raw_track.position}</td><td>${raw_track.title} <span style='color:#888'>${raw_track.duration||''}</span><td>${list_refs}</td></td></tr>`;
+
+            html += `<tr>
+                <td>${raw_track.position}</td>
+                <td>${track_artist}</td>
+                <td>${raw_track.title} <span style='color:#888'>${raw_track.duration||''}</span></td>
+                <td>${list_refs}</td>
+            </tr>`;
         });
         html += '</table>';
         Page._infoSection.innerHTML = html;

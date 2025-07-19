@@ -1,7 +1,7 @@
 'use strict';
 
 const Utils = {
-    unify_track_name: function(title) {
+    unifyTrackName: function(title) {
         let replacements = [
             [/["]|ÃÂ|ãâ|!|\|/g, ''],
             [/[,.()\-\/\\?]/g],
@@ -16,7 +16,7 @@ const Utils = {
         });
         return result.trim();
     },
-    unify_name: function(name) {
+    unifyName: function(name) {
         return (
             name
                 .toLowerCase()
@@ -28,9 +28,9 @@ const Utils = {
         ).trim();
     },
     getTrackCode: function(track_artist, track_title, matching_type) {
-        let code = Utils.unify_track_name(track_title).toLowerCase();
+        let code = Utils.unifyTrackName(track_title).toLowerCase();
         if (matching_type === "author_and_title") {
-            code = `${Utils.unify_track_name(track_artist).toLowerCase()}:${code}`;
+            code = `${Utils.unifyTrackName(track_artist).toLowerCase()}:${code}`;
         }
         return code;
     }

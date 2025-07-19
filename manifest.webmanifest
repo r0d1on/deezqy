@@ -1,0 +1,22 @@
+{
+  "name": "Deezqy: Discogs Collection Analytics",
+  "short_name": "Deezqy",
+  "description": "Analyze and manage your Discogs music collection with advanced search, uniqueness scoring, and local caching.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f7f7",
+  "theme_color": "#e52e71",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "loader.gif",
+      "sizes": "80x80",
+      "type": "image/gif"
+    }
+  ]
+}

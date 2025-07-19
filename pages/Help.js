@@ -21,7 +21,7 @@ let Page = {
             <ul class="help-list">
                 <li>
                     <div class="help-key">Setup:</div>
-                    <div class="help-desc">On the setup page, enter your <b>private token</b> and click <b>Test credentials</b> to automatically retrieve your username. Alternatively, you may enter only a username to access (your or someone else's) public releases.</div>
+                    <div class="help-desc">On the setup page, enter your <b>private token</b> and click <b>Test credentials</b> to automatically retrieve your username. Alternatively, you may enter only a username to access (your or someone else's) public releases. You can also select your preferred <b>track matching mode</b> ("author & title" or "title only") for collection analysis.</div>
                 </li>
                 <li>
                     <div class="help-key">Loading & Updating:</div>
@@ -32,8 +32,20 @@ let Page = {
                     <div class="help-desc">Once loaded, your collection is displayed as a sortable and filterable table. Sorting and filtering can be applied to any column. The app will always try to use the cached collection first when starting.</div>
                 </li>
                 <li>
+                    <div class="help-key">Advanced Search:</div>
+                    <div class="help-desc">Use the <b>Search</b> tab to find releases by title, artist, track, country, format, or barcode. Results are shown in a sortable/filterable table. Click a result to view detailed release info and see if it matches any tracks in your collection.</div>
+                </li>
+                <li>
+                    <div class="help-key">Track Matching Mode:</div>
+                    <div class="help-desc">Switch between <b>author & title</b> and <b>title only</b> matching in Setup to control how tracks are deduplicated and scored for uniqueness.</div>
+                </li>
+                <li>
                     <div class="help-key">Uniqueness Score:</div>
-                    <div class="help-desc">Each release (album) is assigned a <b>score</b> representing its uniqueness within your collection. This is shown in the <b>score</b> column.</div>
+                    <div class="help-desc">Each release (album) is assigned a <b>score</b> representing its uniqueness within your collection, based on the selected matching mode. This is shown in the <b>score</b> column.</div>
+                </li>
+                <li>
+                    <div class="help-key">Release Info & Tracklist:</div>
+                    <div class="help-desc">View detailed release information and tracklists, including cross-references to your collection for each track.</div>
                 </li>
                 <li>
                     <div class="help-key">Progress & Status:</div>
@@ -45,7 +57,7 @@ let Page = {
                 </li>
                 <li>
                     <div class="help-key">Navigation:</div>
-                    <div class="help-desc">Use the menu at the top to switch between setup, collection, analytics, and help sections.</div>
+                    <div class="help-desc">Use the menu at the top to switch between setup, collection, search, and help sections.</div>
                 </li>
                 <li>
                     <div class="help-key">Additional information:</div>
