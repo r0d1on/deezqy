@@ -15,14 +15,8 @@ const Page = {
      */
     init(appState) {
         this.appState = appState;
-        let token = this.appState.Cookie.get("token");
-        if (token) {
-            this.appState.token = token;
-        }
-        let username = this.appState.Cookie.get("username");
-        if (username) {
-            this.appState.username = username;
-        }
+        this.appState.token = this.appState.Cookie.get("token")||"";
+        this.appState.username = this.appState.Cookie.get("username")||"";
     },
     /**
      * Render the setup page
@@ -62,6 +56,7 @@ const Page = {
                     this.appState.username = e.target.value;
                     this.appState.Cookie.set("username", e.target.value);
                     this.appState.Pages.Collection.init();
+                    // TODO: this.Wanted.init();
                 }
             }
         ];
@@ -87,26 +82,25 @@ const Page = {
                 this.appState.progress(0,1,"Testing access token");
                 this.appState.API.call(
                     "https://api.discogs.com/oauth/identity"
-                    ,data => {
-                        this.username_input.value = data.username;
-                        this.username_input.onchange({target:this.username_input});
-                        this.appState.progress();
-                    }
-                );
+                ).then(data => {
+                    this.username_input.value = data.username;
+                    this.username_input.onchange({target:this.username_input});
+                    this.appState.progress();
+                });
             } else if (this.appState.username) {
-                this.appState.progress(0,1,"Testing username");
                 this.appState.API.call(
                     `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
-                    ,data => {
-                        const items = (data.pagination && data.pagination.items) || data.releases.length;
-                        this.appState.progress();
-                        uiFeedback.showStatus(`Username is valid, total items in collection size = ${items}`, 'success');
-                    }
-                    ,null
-                );
+                    ,(stage, stages) => {
+                        this.appState.progress(stage, stages, "Testing username");
+                    }                    
+                ).then(data => {
+                    const items = (data.pagination && data.pagination.items) || data.releases.length;
+                    this.appState.progress();
+                    uiFeedback.showStatus(`Username is valid, total items in collection = ${items}`, 'success');
+                });
             } else {
                 uiFeedback.showStatus("Specify access token or username at least", "warning");
-            }
+            };
             // uiFeedback.showStatus('Testing credentials', 'success');
         };
         credentialsGroup.appendChild(button);

@@ -11,7 +11,16 @@ self.addEventListener('install', event => {
         'favicon.svg',
         'manifest.webmanifest',
         'loader.gif',
-        // Add more assets as needed
+        'pages/Collection.js',
+        'pages/Help.js',
+        'pages/Search.js',
+        'pages/Setup.js',
+        'misc/listRenderer.js',
+        'misc/uiFeedback.js',
+        'misc/Utils.js',
+        'api/cookie.js',
+        'api/db.js',
+        'api/discogs.js'
       ]);
     })
   );

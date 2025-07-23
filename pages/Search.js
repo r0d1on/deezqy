@@ -88,6 +88,8 @@ const Page = {
             input.type = 'text';
             input.placeholder = f.placeholder;
             input.className = 'settings-input';
+            // Restore value if present
+            input.value = f.value || "";
             rowDiv.appendChild(input);
             this[f.ref] = input;
         });
@@ -105,6 +107,7 @@ const Page = {
         cleanBtn.className = 'settings-button';
         cleanBtn.onclick = () => {
             this.searchFields.forEach(f => {
+                f.value = undefiend;
                 if (this[f.ref]) this[f.ref].value = '';
             });
         };
@@ -143,10 +146,6 @@ const Page = {
             columns: this.LIST,
             parent: this._resultsSection,
             compact: false,
-            filters: this.searchFilters,
-            onFiltersChange: (filters) => {
-                this.searchFilters = filters.slice();
-            },
             onRowClick: (row, target) => {
                 this.fetchReleaseInfo(row.release_id);
                 Array.from(this._resultsSection.querySelectorAll('tr')).forEach(tr=>tr.classList.remove('collection-row-active'));
@@ -156,6 +155,8 @@ const Page = {
     },
 
     search: function() {
+        // Save search values for persistence
+        this.searchFields.forEach(f => {f.value = this[f.ref].value;});
         if (!this.appState.token) {
             uiFeedback.showStatus("Search works only if access token is provided!", "warning");
             return;
@@ -167,27 +168,29 @@ const Page = {
             if (val) url += `&${f.param}=${encodeURIComponent(val)}`;
         });
         this.appState.API.call(
-            url,
-            data => {
-                if (data.results.length === 0) {
-                    this._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">No results found.</div>';
-                    return;
-                }
-                this.renderSearchResults(data.results);
-                // uiFeedback.showStatus('Search complete', 'success');
+            url
+        ).then(data => {
+            if (data.results.length === 0) {
+                this._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">No results found.</div>';
+                return;
             }
-        );
+            this.renderSearchResults(data.results);
+        });
     },
 
     fetchReleaseInfo: function(releaseId) {
         this._infoSection.innerHTML = '<div style="font-size:18px;color:#888">Loading release info...</div>';
         this.appState.API.call(
-            `https://api.discogs.com/releases/${releaseId}`,
-            data => {
-                this.selectedRelease = data;
-                this.renderReleaseInfo();
-            }
-        );
+            `https://api.discogs.com/releases/${releaseId}`
+        ).then(data => {
+            this.selectedRelease = data;
+            // check if we can update detailed info on a release we have already
+            if (data.id in this.appState.data.release_details) {
+                this.appState.data.release_details[data.id] = data;
+                this.appState.Pages.Collection.saveData(`Release details updated: ${data.title}`);
+            };
+            this.renderReleaseInfo();
+        });
     },
 
     renderReleaseInfo: function() {

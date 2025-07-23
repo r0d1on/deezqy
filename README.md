@@ -75,7 +75,7 @@ Deezqy is a lightweight, browser-based tool for analyzing and managing your Disc
 ## Development
 
 - The app is a single-page application and does not require a backend server.
-- All data is stored in the browser using local storage and cookies.
+- All data is stored in the browser using local storage ~~and cookies~~.
 - The app was "vibecoded" on a weekend for fun and utility.
 
 ## License

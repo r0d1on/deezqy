@@ -10,7 +10,6 @@ import {Cookie} from './api/cookie.js';
 import {DB} from './api/db.js';
 
 import appState from './appState.js';
-import { uiFeedback } from './misc/uiFeedback.js';
 
 const menuItems = [
     { name: 'Setup', page: PageSetup},
@@ -56,9 +55,9 @@ appState.progress =  function(stage, stages, name) {
     function idle() {
         progressSection.innerHTML = 'Idle';
         if (appState.data) {
-            progressSection.innerHTML += " | DB timestamp: " + (new Date(appState.data.timestamp||0)).toISOString();
-            progressSection.innerHTML += " | Rows: " + appState.rowCount||"-";
-            progressSection.innerHTML += " | U-Score: " + ((Math.round(appState.score*100)/100)||"-")+"%";
+            progressSection.innerHTML += " | DB: " + (new Date(appState.data.timestamp||0)).toISOString();
+            progressSection.innerHTML += " | Items: " + appState.rowCount||"-";
+            progressSection.innerHTML += " | Score: " + ((Math.round(appState.score*100)/100)||"-")+"%";
         };
     };
 
@@ -95,30 +94,32 @@ appState.progress =  function(stage, stages, name) {
     progressSection.innerHTML = `<span>${name}</span> <div class='progress-bar'><div class='progress-bar-fill' style='width:${percent}%;'></div></div> <span>${percent}%</span>`;
 }
 
-appState.init = function() {
-    setTimeout(()=>{
-        appState.API = API.init(appState);
-        appState.Cookie = Cookie.init(appState);
-        appState.DB = DB.init(appState, false);
+appState.init = async function() {
+    appState.showOverlay();
 
-        appState.Pages = {};
-        menuItems.forEach(item => {
-            if (item.page) {
-                item.page.init(appState);
-                appState.Pages[item.name] = item.page;
-            };
-            if (item.submenu) {
-                item.submenu.forEach(sub => {
-                    if (sub.page) {
-                        sub.page.init(appState);
-                        appState.Pages[item.name + ":" + item.submenu] = sub.page;
-                    };
-                });
-            };
-        });
-        renderMenu();
-        renderContent();
-    }, 1);
+    appState.API = API.init(appState);
+    appState.Cookie = Cookie.init(appState);
+    appState.DB = DB.init(appState, false);
+
+    appState.Pages = {};
+    menuItems.forEach(item => {
+        if (item.page) {
+            item.page.init(appState);
+            appState.Pages[item.name] = item.page;
+        };
+        if (item.submenu) {
+            item.submenu.forEach(sub => {
+                if (sub.page) {
+                    sub.page.init(appState);
+                    appState.Pages[item.name + ":" + item.submenu] = sub.page;
+                };
+            });
+        };
+    });
+    renderMenu();
+    renderContent();
+
+    appState.hideOverlay();
 }
 
 /**
@@ -209,7 +210,6 @@ function renderContent() {
  * Initialize the application after DOM is loaded.
  */
 document.addEventListener('DOMContentLoaded', () => {
-    appState.init();
     window.appState = appState;
-    // uiFeedback.showStatus('App loaded', 'success');
+    appState.init();
 });
