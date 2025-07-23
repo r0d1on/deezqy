@@ -17,32 +17,51 @@ const Page = {
      */
     init(appState) {
         this.appState = appState || this.appState;
-        this.appState.data = {};
-        this.appState.collection = {};
-        this.appState.showOverlay();
-        if (this.appState.username) {
-            this.appState.progress(0, 4, "Cache decompression");
-            this.appState.DB.get(this.appState.username).then((timestamp) => {
-                this.appState.progress(1);
-                this.appState.data['timestamp'] = 1 * timestamp;
-                this.appState.DB.get(this.appState.username + ".folders").then((folders) => {
-                    this.appState.progress(2);
-                    this.appState.data.folders = folders || [];
-                    this.appState.DB.get(this.appState.username + ".releases").then((releases) => {
-                        this.appState.progress(3);
-                        this.appState.data.releases = releases || [];
-                        this.appState.DB.get(this.appState.username + ".release_details").then((releaseDetails) => {
-                            this.appState.progress(4);
-                            this.appState.data.release_details = releaseDetails || [];
-                            this.normaliseCollection();
-                            this.appState.hideOverlay();
-                        });
-                    });
-                });
+        appState = this.appState;
+        appState.data = {};
+        appState.data['timestamp'] = 0;
+        appState.data.folders = {};
+        appState.data.releases = {};
+        appState.data.release_details = {};
+
+        if (appState.username) {
+            appState.progress(0, 4, "Restoring user's cached data");
+            Promise.all([
+                appState.DB.get(appState.username),
+                appState.DB.get(appState.username + ".folders"),
+                appState.DB.get(appState.username + ".releases"),
+                appState.DB.get(appState.username + ".release_details")
+            ]).then(([
+                timestamp,
+                folders,
+                releases,
+                details
+            ])=>{
+                appState.data['timestamp'] = timestamp * 1;
+                appState.data.folders = folders || [];
+                appState.data.releases = releases || [];
+                appState.data.release_details = details || [];
+
+                if (Array.isArray(appState.data.folders))
+                    appState.data.folders = Page.make_index(appState.data.folders);
+
+                if (Array.isArray(appState.data.releases))
+                    appState.data.releases = Page.make_index(appState.data.releases);
+
+                if (Array.isArray(appState.data.release_details))
+                    appState.data.release_details = Page.make_index(appState.data.release_details);
+
+                appState.progress();
+                this.normaliseCollection();
             });
-        } else {
-            this.appState.hideOverlay();
-        }
+        };
+    },
+
+    make_index : function(list) {
+        return list.reduce((o, item)=>{
+            o[item.id] = item;
+            return o;
+        }, {})
     },
 
     LIST : [
@@ -100,34 +119,31 @@ const Page = {
             return;
         }
 
-        if (Page._working) {
+        if (this._working) {
             setTimeout(this.normaliseCollection.bind(this), 500);
             return;
         };
-        Page._working = true;
+        this._working = true;
 
-        this.appState.collection={};
+        this.appState.collection = {};
 
         // Normalise folders
-        this.appState.collection['folders'] = {};
-        this.appState.data.folders.forEach((item)=>{
-            this.appState.collection['folders'][item.id] = structuredClone(item)
-        });
+        this.appState.collection['folders'] = structuredClone(this.appState.data.folders);
 
         // Normalise releases
         this.appState.collection['releases'] = {};
-        this.appState.data.releases.forEach((item)=>{
-            let item_cpy = structuredClone(item);
+        Object.keys(this.appState.data.releases).forEach((id)=>{
+            let item_cpy = structuredClone(this.appState.data.releases[id]);
             item_cpy.basic_information.title = Utils.unifyName(item_cpy.basic_information.title);
-            this.appState.collection['releases'][item.id] = item_cpy;
+            this.appState.collection['releases'][item_cpy.id] = item_cpy;
         });
 
         // Inject release details into releases
-        this.appState.data.release_details.forEach((item)=>{
-            let item_cpy = structuredClone(item);
+        Object.keys(this.appState.data.release_details).forEach((id)=>{
+            let item_cpy = structuredClone(this.appState.data.release_details[id]);
             item_cpy.title = Utils.unifyName(item_cpy.title);
             item_cpy.artists_sort = Utils.unifyName(item_cpy.artists_sort);
-            this.appState.collection['releases'][item.id]['details'] = item_cpy;
+            this.appState.collection['releases'][item_cpy.id]['details'] = item_cpy;
         });
 
         // Extract and normalize all tracks for all releases, cross-reference links between tracks and releases
@@ -191,7 +207,7 @@ const Page = {
                         "track": track,
                         "raw_track": raw_track
                     };
-                    let list_item = ListRenderer.flattenItem(Page.LIST, context);
+                    let list_item = ListRenderer.flattenItem(this.LIST, context);
                     this.appState.collection.list.push(list_item);
                 };
 
@@ -222,7 +238,7 @@ const Page = {
                 });
 
                 // add "post" columns to the list
-                Page.LIST.forEach(col=>{
+                this.LIST.forEach(col=>{
                     if (col.post) {
                         this.appState.collection.list.forEach((row)=>{
                             let release = this.appState.collection.releases[row.release_id];
@@ -236,8 +252,8 @@ const Page = {
                     };
                 });
 
-                if ((Page._last_parent)&&(this.appState.ui.activeMenu.page==Page)) {
-                    Page.render(Page._last_parent);
+                if ((this._last_parent)&&(this.appState.ui.activeMenu.page==this)) {
+                    this.render(this._last_parent);
                 }
                 else {
                     let scores = this.appState.collection.list.map(row=>{
@@ -247,51 +263,55 @@ const Page = {
                     console.log("Collection average score: ", this.appState.score);
                 }
 
-                this.appState.rowCount = this.appState.data.releases.length;
+                this.appState.rowCount = Object.keys(this.appState.data.releases).length;
                 this.appState.progress();
-                Page._working = false;
+                this._working = false;
                 uiFeedback.showStatus('Collection loaded', 'success');
             };
         };
         trackr();
     },
 
-    finalize_download : function() {
+    saveData : function(message) {
         this.appState.data['timestamp'] = Date.now();
-        this.appState.DB.set(this.appState.username, this.appState.data['timestamp']).then(()=>{
-            this.appState.DB.set(this.appState.username+".folders", this.appState.data.folders).then(()=>{
-                this.appState.DB.set(this.appState.username+".releases", this.appState.data.releases).then(()=>{
-                    this.appState.DB.set(this.appState.username+".release_details", this.appState.data.release_details).then(()=>{
-                        this.normaliseCollection();
-                        Page.render(Page._last_parent);
-                    });
-                });
-            });
+        Promise.all([
+            this.appState.DB.set(this.appState.username, this.appState.data['timestamp']),
+            this.appState.DB.set(this.appState.username + ".folders", this.appState.data.folders),
+            this.appState.DB.set(this.appState.username + ".releases", this.appState.data.releases),
+            this.appState.DB.set(this.appState.username + ".release_details", this.appState.data.release_details)
+        ]).then(()=>{
+            this.normaliseCollection();
+            if ((this._last_parent)&&(this.appState.ui.activeMenu.page==this)) {
+                this.render(this._last_parent);
+            };
+            (message)&&(uiFeedback.showStatus(message, 'success'));
         });
     },
 
-    _download_release_info: function(update) {
+    downloadTracks: function(update) {
         if (update) {
-            this.appState.data['release_details'] = this.appState.data['release_details'] || [];
+            this.appState.data['release_details'] = this.appState.data['release_details'] || {};
         } else {
-            this.appState.data['release_details'] = [];
+            this.appState.data['release_details'] = {};
         };
 
         // increment: required details
         let available = {};
-        this.appState.data['release_details'].forEach((item)=>{available[item.id] = 1});
-        this.appState._needed = this.appState.data['releases'].reduce((p, c)=>{
-            if (!(c.id in available)) {
-                p.push(c.id);
+        Object.keys(this.appState.data['release_details']).forEach((id)=>{available[id] = 1});
+        this.appState._needed = Object.keys(this.appState.data['releases']).reduce((o, id)=>{
+            if (id in available) {
+                delete available[id];
             } else {
-                delete available[c.id];
+                o.push(id);
             };
-            return p;
+            return o;
         }, []);
 
         // decrement: obsolete details
         if (Object.keys(available).length) {
-            this.appState.data['release_details'] = this.appState.data['release_details'].filter(item=>!(item.id in available));
+            Object.keys(available).forEach((id)=>{
+                delete this.appState.data['release_details'][id];
+            });
         };
 
         if (Object.keys(available).length||this.appState._needed.length)
@@ -304,53 +324,48 @@ const Page = {
             let release_id = this.appState._needed.pop();
             this.appState.API.call(
                 `https://api.discogs.com/releases/${release_id}`
-                ,data => {
-                    this.appState.data['release_details'].push(data);
-                    this.appState.progress(ix);
-                    if (this.appState._needed.length) {
-                        setTimeout(getter, 400);
-                    } else {
-                        this.finalize_download();
-                    }
+            ).then(data => {
+                this.appState.data['release_details'][data.id] = data;
+                this.appState.progress(ix);
+                if (this.appState._needed.length) {
+                    setTimeout(getter, 800);
+                } else {
+                    this.saveData("Tracks loaded");
                 }
-            );
+            });
         }
         if (this.appState._needed.length)
             getter();
         else
-            this.finalize_download();
+            this.saveData();
     },
 
-    _download_releases : function(update) {
-        this.appState.API.call(
-            `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
-            ,data => {
-                this.appState.data['releases'] = data.releases;
-                setTimeout(()=>{this._download_release_info(update)}, 1000);
-            }
-            ,0
-            ,(stage, stages)=>{
-                this.appState.progress(stage, stages, "Loading releases");
-            }
-        );
-    },
-
-    _download_data : function(update) {
+    downloadData : function(update) {
         if (!this.appState.username) {
             uiFeedback.showStatus("DB update works only if user name is provided!", "warning");
             return;
-        };        
+        };
         this.appState.API.call(
             `https://api.discogs.com/users/${this.appState.username}/collection/folders`
-            ,data => {
-                this.appState.data['folders'] = data.folders;
-                setTimeout(()=>{this._download_releases(update)}, 1000);                    
-            }
-            ,0
             ,(stage, stages)=>{
                 this.appState.progress(stage, stages, "Loading folders");
             }
-        );
+        )
+        .then((v)=>{return new Promise((r,d)=>{setTimeout(()=>{r(v)}, 1000)})})
+        .then((data)=>{
+            this.appState.data['folders'] = Page.make_index(data.folders);
+            return this.appState.API.call(
+                `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
+                ,(stage, stages)=>{
+                    this.appState.progress(stage, stages, "Loading releases");
+                }
+            )
+        })
+        .then((v)=>{return new Promise((r,d)=>{setTimeout(()=>{r(v)}, 1000)})})
+        .then((data)=>{
+            this.appState.data['releases'] = Page.make_index(data.releases);
+            setTimeout(()=>{this.downloadTracks(update)}, 1000);
+        });
     },
  
     render_list : function(parent_div) {
@@ -358,7 +373,7 @@ const Page = {
         if ((this.appState.collection==undefined)||(this.appState.collection.list==undefined)) {
             return;
         }
-        // Use ListRenderer for rendering, preserve filters
+
         new ListRenderer({
             data: this.appState.collection.list,
             columns: Page.LIST,
@@ -369,9 +384,9 @@ const Page = {
                 Page.listFilters = filters.slice();
             },
             onScore: (score, rows)=>{
-                this.appState.score = score;
-                this.appState.rowCount = rows;
-                this.appState.progress(-1);
+                Page.appState.score = score;
+                Page.appState.rowCount = rows;
+                Page.appState.progress(-1);
             }
         });
     },
@@ -386,13 +401,13 @@ const Page = {
         let buttonReload = document.createElement("button");
         buttonReload.innerText = "Reload";
         buttonReload.className = "settings-button";
-        buttonReload.onclick = (e)=>this._download_data();
+        buttonReload.onclick = (e)=>this.downloadData();
         controls.appendChild(buttonReload);
 
         let buttonUpdate = document.createElement("button");
         buttonUpdate.innerText = "Update";
         buttonUpdate.className = "settings-button";
-        buttonUpdate.onclick = (e)=>this._download_data(true);
+        buttonUpdate.onclick = (e)=>this.downloadData(true);
         controls.appendChild(buttonUpdate);
 
         parent.appendChild(controls);

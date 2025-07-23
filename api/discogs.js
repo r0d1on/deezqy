@@ -1,5 +1,7 @@
 'use strict';
 
+import { uiFeedback } from "../misc/uiFeedback.js";
+
 function union(d0, d1) {
     let u = {};
     Object.keys(d0).forEach(key=>{
@@ -19,12 +21,12 @@ let API = {
         return API;
     },
     
-    call : function(url, callback, page, progress, errors) {
+    call : function(url, progress, page, errors) {
         let token = API.App.token;
 
         (progress)&&(!page)&&(progress(0, 1));
 
-        fetch(url + (page?`?page=${page}`:""), {
+        return fetch(url + (page?`?page=${page}`:""), {
             method : 'get',
             headers : {
                 "Authorization" : `Discogs token=${token}` // pageLoad.App.
@@ -38,22 +40,21 @@ let API = {
         }).then(data => {
             if ((data.pagination) && (page!==null) && (data.pagination.page < data.pagination.pages)) {
                 (progress)&&(progress(data.pagination.page, data.pagination.pages));
-                API.call(url, next => {
-                    try {
-                        callback(union(data, next));
-                    } catch (error) {
-                        console.error("Error while processing received data:", error)
-                        console.trace();
-                    }
-                }, data.pagination.page + 1, progress);
+                return API.call(
+                    url, progress, data.pagination.page + 1
+                ).then(v=>{
+                    return new Promise((r, d)=>{setTimeout(()=>{r(v)},100)})
+                }).then((next)=>{
+                    return new Promise((resolve, reject)=>{
+                        (progress)&&(progress(data.pagination.page, data.pagination.pages));
+                        resolve(union(data, next));
+                    });                        
+                });
             } else {
                 (progress)&&(progress(1, 1));
-                try {
-                    callback(data);
-                } catch (error) {
-                    console.error("Error while processing received data:", error)
-                    console.trace();
-                }
+                return new Promise((resolve, reject)=>{
+                    resolve(data);
+                });
             };
 
         }).catch(function (error) {
@@ -62,10 +63,10 @@ let API = {
                 API.App.progress(undefined , undefined, "Too many requests, cooling down");
                 console.log("Retrying in 30 seconds");
                 setTimeout(()=>{
-                    API.call(url, callback, page, progress, (errors||0) + 1);
+                    API.call(url, progress, page, (errors||0) + 1);
                 }, 1000*30);
             } else {
-                console.log("Failing the request");
+                uiFeedback("API request failed", "warning");
             };
         });
     }
