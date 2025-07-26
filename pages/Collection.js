@@ -246,7 +246,7 @@ const Page = {
     },
 
     saveData : function(message) {
-        this.appState.save_db(
+        return this.appState.save_db(
         ).then(()=>{
             return this.appState.restore_db();
         }).then(()=>{
