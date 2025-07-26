@@ -26,13 +26,6 @@ const Page = {
         Page.normalise();
     },
 
-    make_index : function(list) {
-        return list.reduce((o, item)=>{
-            o[item.id] = item;
-            return o;
-        }, {})
-    },
-
     LIST : [
         {name: "release_folder", path: "folder.name", filter:"", maxwidth:"90px", render: (row)=>{
             return row['release_folder'].toLowerCase().replace("uncategorized","*");
@@ -330,7 +323,7 @@ const Page = {
         )
         .then((v)=>{return new Promise((r,d)=>{setTimeout(()=>{r(v)}, 1000)})})
         .then((data)=>{
-            this.appState.data['folders'] = Page.make_index(data.folders);
+            this.appState.data['folders'] = Page.appState.make_index(data.folders);
             return this.appState.API.call(
                 `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
                 ,(stage, stages)=>{
@@ -340,7 +333,7 @@ const Page = {
         })
         .then((v)=>{return new Promise((r,d)=>{setTimeout(()=>{r(v)}, 1000)})})
         .then((data)=>{
-            this.appState.data.releases = Page.make_index(data.releases);
+            this.appState.data.releases = Page.appState.make_index(data.releases);
             return new Promise((r,d)=>{setTimeout(()=>{r()}, 1000)})
         }).then(()=>{
             return Page.downloadTracks(update);

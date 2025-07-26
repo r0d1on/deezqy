@@ -105,6 +105,14 @@ appState.save_db = async function() {
     ])
 }
 
+
+appState.make_index = function(list) {
+    return list.reduce((o, item)=>{
+        o[item.id] = item;
+        return o;
+    }, {})
+}
+
 appState.restore_db = async function() {
     appState.data = {};
     appState.data['timestamp'] = 0;
@@ -135,16 +143,16 @@ appState.restore_db = async function() {
             appState.data.release_details = details || [];
 
             if (Array.isArray(appState.data.folders))
-                appState.data.folders = Page.make_index(appState.data.folders);
+                appState.data.folders = appState.make_index(appState.data.folders);
 
             if (Array.isArray(appState.data.wanted))
-                appState.data.wanted = Page.make_index(appState.data.wanted);
+                appState.data.wanted = appState.make_index(appState.data.wanted);
 
             if (Array.isArray(appState.data.releases))
-                appState.data.releases = Page.make_index(appState.data.releases);
+                appState.data.releases = appState.make_index(appState.data.releases);
 
             if (Array.isArray(appState.data.release_details))
-                appState.data.release_details = Page.make_index(appState.data.release_details);
+                appState.data.release_details = appState.make_index(appState.data.release_details);
 
             appState.progress();
             return new Promise((r, c)=>{r()})
