@@ -107,7 +107,7 @@ const Page = {
         cleanBtn.className = 'settings-button';
         cleanBtn.onclick = () => {
             this.searchFields.forEach(f => {
-                f.value = undefiend;
+                f.value = undefined;
                 if (this[f.ref]) this[f.ref].value = '';
             });
         };

@@ -15,8 +15,6 @@ const Page = {
      */
     init(appState) {
         this.appState = appState;
-        this.appState.token = this.appState.Cookie.get("token")||"";
-        this.appState.username = this.appState.Cookie.get("username")||"";
     },
     /**
      * Render the setup page
@@ -146,7 +144,7 @@ const Page = {
                 leftText.classList.add("switch-active-text")
                 rightText.classList.remove("switch-active-text")
             }
-            setTimeout(this.appState.Pages.Collection.normaliseCollection, 100);
+            setTimeout(this.appState.Pages.Collection.init(), 100);
         };
         switchLabel.appendChild(leftText);
         switchLabel.appendChild(slider);
