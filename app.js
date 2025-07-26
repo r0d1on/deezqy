@@ -187,10 +187,26 @@ appState.init = async function() {
             };
         });
         renderMenu();
-        renderContent();
+        appState.renderContent();
 
         appState.hideOverlay();        
     })
+}
+
+/**
+ * Render the main content area based on the active menu and submenu.
+ */
+appState.renderContent = function() {
+    const content = document.querySelector('.app-content');
+    if (appState.ui.activeMenu && appState.ui.activeMenu.submenu && appState.ui.activeSubmenu) {
+        content.textContent = `test ${appState.ui.activeSubmenu}`;
+    } else {
+        if (appState.ui.activeMenu.page) {
+            appState.ui.activeMenu.page.render(content);
+        } else {
+            content.textContent = `test ${appState.ui.activeMenu.name}`;
+        }
+    }
 }
 
 /**
@@ -227,7 +243,7 @@ function createMenuItem(item, skipSubmenus) {
         appState.ui.activeMenu = item;
         appState.ui.activeSubmenu = null;
         renderMenu();
-        renderContent();
+        appState.renderContent();
     };
     if (item.submenu) {
         menuItem.classList.toggle('show-submenu', (appState.ui.activeMenu === item) && (!skipSubmenus));
@@ -253,7 +269,7 @@ function createSubmenu(item, skipSubmenus) {
             e.stopPropagation();
             appState.ui.activeMenu = item;
             appState.ui.activeSubmenu = sub;
-            renderContent();
+            appState.renderContent();
             renderMenu(true); // Hide submenus when submenu item is clicked
         };
         submenu.appendChild(subItem);
@@ -261,21 +277,7 @@ function createSubmenu(item, skipSubmenus) {
     return submenu;
 }
 
-/**
- * Render the main content area based on the active menu and submenu.
- */
-function renderContent() {
-    const content = document.querySelector('.app-content');
-    if (appState.ui.activeMenu && appState.ui.activeMenu.submenu && appState.ui.activeSubmenu) {
-        content.textContent = `test ${appState.ui.activeSubmenu}`;
-    } else {
-        if (appState.ui.activeMenu.page) {
-            appState.ui.activeMenu.page.render(content);
-        } else {
-            content.textContent = `test ${appState.ui.activeMenu.name}`;
-        }
-    }
-}
+
 
 /**
  * Initialize the application after DOM is loaded.

@@ -44,9 +44,9 @@ const Page = {
         }).then(()=>{
             return Page.downloadTracks(true);
         }).then(()=>{
-            if ((Page._last_parent)&&(Page.appState.ui.activeMenu.page==Page)) {
-                Page.render(Page._last_parent);
-            }
+            //if ((Page._last_parent)&&(Page.appState.ui.activeMenu.page==Page)) {
+            //    Page.render(Page._last_parent);
+            //}
         });
     },
  
