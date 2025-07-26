@@ -18,43 +18,12 @@ const Page = {
     init(appState) {
         this.appState = appState || this.appState;
         appState = this.appState;
-        appState.data = {};
-        appState.data['timestamp'] = 0;
-        appState.data.folders = {};
-        appState.data.releases = {};
-        appState.data.release_details = {};
 
-        if (appState.username) {
-            appState.progress(0, 4, "Restoring user's cached data");
-            Promise.all([
-                appState.DB.get(appState.username),
-                appState.DB.get(appState.username + ".folders"),
-                appState.DB.get(appState.username + ".releases"),
-                appState.DB.get(appState.username + ".release_details")
-            ]).then(([
-                timestamp,
-                folders,
-                releases,
-                details
-            ])=>{
-                appState.data['timestamp'] = timestamp * 1;
-                appState.data.folders = folders || [];
-                appState.data.releases = releases || [];
-                appState.data.release_details = details || [];
+        this.appState.collection = {};
+        this.appState.collection.tracks_by_code = {};
+        this.appState.collection.tracks = {};
 
-                if (Array.isArray(appState.data.folders))
-                    appState.data.folders = Page.make_index(appState.data.folders);
-
-                if (Array.isArray(appState.data.releases))
-                    appState.data.releases = Page.make_index(appState.data.releases);
-
-                if (Array.isArray(appState.data.release_details))
-                    appState.data.release_details = Page.make_index(appState.data.release_details);
-
-                appState.progress();
-                this.normaliseCollection();
-            });
-        };
+        Page.normalise();
     },
 
     make_index : function(list) {
@@ -78,7 +47,7 @@ const Page = {
         }},
 
         {name: "release_thumb", path: "release.basic_information.thumb", maxwidth:"65px", render: (row)=>{
-            return `<img style="width:60px;" src="${Page.appState.collection.releases[row['release_id']].basic_information.thumb}"/>`
+            return `<img style="width:60px;" src="${[row['release_thumb']]}"/>`
         }},
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
@@ -106,59 +75,69 @@ const Page = {
                 first = false;
                 let time_this = row.track_time.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
                 let time_that = ref.duration.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
-                html += `<b style="color:${((Math.abs(time_this-time_that) < 10) ? 'blue':'red')}" title="${ref.duration}">♪</b> `;
-                html += `<b><small><a href="#${ref.release_id}">${ref.format}</a> : ${ref.title}</small></b>`;
+                html += `<b style="color:${((Math.abs(time_this-time_that) < 10) ? 'blue' : 'red')}" title="${ref.duration}">♪</b> `;
+                if (ref.folder=="wanted")
+                    html += `<b title="${ref.artist}">🔍<small style="color:red;">${ref.format} : ${ref.title}</small></b>`;
+                else
+                    html += `<b title="${ref.artist}"><small><a href="#${ref.release_id}">${ref.format}</a> : ${ref.title}</small></b>`;
             });
+
             return html;
         }},
-
     ],
 
-    normaliseCollection : function() {
-        if ((this.appState.data==undefined)||(this.appState.data.release_details==undefined)) {
+    normalise : function({folder, list}={folder: "releases", list: "list"}) {
+        if ((this.appState.data==undefined)||(this.appState.data.release_details==undefined)||(
+            Object.keys(this.appState.data.release_details).length==0
+        )) {
             return;
         }
 
         if (this._working) {
-            setTimeout(this.normaliseCollection.bind(this), 500);
+            setTimeout(
+                ((p)=>{
+                    return ()=>{Page.normalise(p)}
+                })({folder: folder, list: list})
+                ,500
+            );
             return;
         };
         this._working = true;
 
-        this.appState.collection = {};
+        if (folder=="releases")
+            Page.normalise({folder : "wanted", list : "wanted_list"});
 
         // Normalise folders
         this.appState.collection['folders'] = structuredClone(this.appState.data.folders);
 
         // Normalise releases
-        this.appState.collection['releases'] = {};
-        Object.keys(this.appState.data.releases).forEach((id)=>{
-            let item_cpy = structuredClone(this.appState.data.releases[id]);
+        this.appState.collection[folder] = {};
+        Object.keys(this.appState.data[folder]).forEach((id)=>{
+            let item_cpy = structuredClone(this.appState.data[folder][id]);
             item_cpy.basic_information.title = Utils.unifyName(item_cpy.basic_information.title);
-            this.appState.collection['releases'][item_cpy.id] = item_cpy;
+            this.appState.collection[folder][item_cpy.id] = item_cpy;
         });
 
         // Inject release details into releases
-        Object.keys(this.appState.data.release_details).forEach((id)=>{
+        Object.keys(this.appState.data[folder]).forEach((id)=>{
             let item_cpy = structuredClone(this.appState.data.release_details[id]);
             item_cpy.title = Utils.unifyName(item_cpy.title);
             item_cpy.artists_sort = Utils.unifyName(item_cpy.artists_sort);
-            this.appState.collection['releases'][item_cpy.id]['details'] = item_cpy;
+            if (item_cpy.id in this.appState.collection[folder])
+                this.appState.collection[folder][item_cpy.id]['details'] = item_cpy;
         });
 
         // Extract and normalize all tracks for all releases, cross-reference links between tracks and releases
-        this.appState.progress(0, Object.keys(this.appState.collection.releases).length, "Normalising the collection");
-        this.appState.collection.tracks_by_code = {};
-        this.appState.collection.tracks = {};
-        this.appState.collection.list = [];
+        this.appState.progress(0, Object.keys(this.appState.collection[folder]).length, `Normalising the collection [${folder}]`);
+        this.appState.collection[list] = [];
 
         let i=0;
         let trackr = () => {
-            let r_ids = Object.keys(this.appState.collection.releases);
+            let r_ids = Object.keys(Page.appState.collection[folder]);
             if (i < r_ids.length) {
-                this.appState.progress(i);
+                Page.appState.progress(i);
                 let release_id = r_ids[i];
-                let release = this.appState.collection.releases[release_id];
+                let release = Page.appState.collection[folder][release_id];
                 let format = release.basic_information.formats.map(e=>e.name).join("|")
                 release.format = format;
 
@@ -170,13 +149,13 @@ const Page = {
                     raw_track.artist = track_artist;
 
                     let track_title = raw_track.title;
-                    let track_code = Utils.getTrackCode(track_artist, track_title, this.appState.matching_type);
+                    let track_code = Utils.getTrackCode(track_artist, track_title, Page.appState.matching_type);
 
-                    let id = this.appState.collection.tracks_by_code[track_code];
+                    let id = Page.appState.collection.tracks_by_code[track_code];
                     if (id === undefined) {
-                        id = Object.keys(this.appState.collection.tracks_by_code).length + 1
-                        this.appState.collection.tracks_by_code[track_code] = id;
-                        this.appState.collection.tracks[id] = {
+                        id = Object.keys(Page.appState.collection.tracks_by_code).length + 1
+                        Page.appState.collection.tracks_by_code[track_code] = id;
+                        Page.appState.collection.tracks[id] = {
                             id: id,
                             title: track_title,
                             artist: track_artist,
@@ -185,7 +164,7 @@ const Page = {
                             refs : []
                         };
                     };
-                    let track = this.appState.collection.tracks[id];
+                    let track = Page.appState.collection.tracks[id];
                     
                     track.releases.push(release_id);
                     track.refs.push({
@@ -194,7 +173,8 @@ const Page = {
                         artist: track_artist,
                         format: format,
                         title: release.details.title,
-                        duration: raw_track.duration
+                        duration: raw_track.duration,
+                        folder: folder
                     });
 
                     raw_track.id = id;
@@ -202,13 +182,13 @@ const Page = {
 
                     // add flattened track info into collection items list
                     let context = {
-                        "folder": this.appState.collection.folders[release.folder_id]||{name:`${release.folder_id||"---"}`},
+                        "folder": Page.appState.collection.folders[release.folder_id]||{name:`${release.folder_id||"---"}`},
                         "release": release,
                         "track": track,
                         "raw_track": raw_track
                     };
-                    let list_item = ListRenderer.flattenItem(this.LIST, context);
-                    this.appState.collection.list.push(list_item);
+                    let list_item = ListRenderer.flattenItem(Page.LIST, context);
+                    Page.appState.collection[list].push(list_item);
                 };
 
                 release.details.tracklist.forEach((raw_track)=>{
@@ -224,13 +204,13 @@ const Page = {
             } else {
 
                 // calculate release "uniqueness" - fraction of unreferenced tracks in it
-                Object.keys(this.appState.collection.releases).forEach(release_id=>{
-                    let release = this.appState.collection.releases[release_id];
+                Object.keys(Page.appState.collection[folder]).forEach(release_id=>{
+                    let release = Page.appState.collection[folder][release_id];
                     let scores = release.details.tracklist.map((track)=>{
-                        if (!(track.id in this.appState.collection.tracks)) {
+                        if (!(track.id in Page.appState.collection.tracks)) {
                             return 1;
                         } else {
-                            return (this.appState.collection.tracks[track.id].releases.length == 1)*1
+                            return (Page.appState.collection.tracks[track.id].releases.length == 1)*1
                         };
                     });
                     release.score = scores.reduce((p,c)=>p+c, 0) / release.details.tracklist.length;
@@ -238,10 +218,10 @@ const Page = {
                 });
 
                 // add "post" columns to the list
-                this.LIST.forEach(col=>{
+                Page.LIST.forEach(col=>{
                     if (col.post) {
-                        this.appState.collection.list.forEach((row)=>{
-                            let release = this.appState.collection.releases[row.release_id];
+                        Page.appState.collection[list].forEach((row)=>{
+                            let release = Page.appState.collection[folder][row.release_id];
                             row[col.name] = ListRenderer.extractListValue(
                                 {
                                     "release": release
@@ -252,92 +232,89 @@ const Page = {
                     };
                 });
 
-                if ((this._last_parent)&&(this.appState.ui.activeMenu.page==this)) {
-                    this.render(this._last_parent);
+                if ((Page._last_parent)&&(Page.appState.ui.activeMenu.page==Page)) {
+                    Page.render(Page._last_parent);
                 }
                 else {
-                    let scores = this.appState.collection.list.map(row=>{
-                        return [row.release_id, this.appState.collection.releases[row.release_id].score];
+                    let scores = Page.appState.collection[list].map(row=>{
+                        return [row.release_id, Page.appState.collection[folder][row.release_id].score];
                     });
-                    this.appState.score = scores.reduce((p,c)=>p+c[1], 0) / scores.length;
-                    console.log("Collection average score: ", this.appState.score);
+                    Page.appState.score = scores.reduce((p,c)=>p+c[1], 0) / scores.length;
+                    console.log("Collection average score: ", Page.appState.score);
                 }
 
-                this.appState.rowCount = Object.keys(this.appState.data.releases).length;
-                this.appState.progress();
-                this._working = false;
-                uiFeedback.showStatus('Collection loaded', 'success');
+                Page.appState.rowCount = Object.keys(Page.appState.data[folder]).length;
+                Page.appState.progress();
+                Page._working = false;
+                uiFeedback.showStatus(`${folder} list loaded`, 'success');
             };
         };
         trackr();
     },
 
     saveData : function(message) {
-        this.appState.data['timestamp'] = Date.now();
-        Promise.all([
-            this.appState.DB.set(this.appState.username, this.appState.data['timestamp']),
-            this.appState.DB.set(this.appState.username + ".folders", this.appState.data.folders),
-            this.appState.DB.set(this.appState.username + ".releases", this.appState.data.releases),
-            this.appState.DB.set(this.appState.username + ".release_details", this.appState.data.release_details)
-        ]).then(()=>{
-            this.normaliseCollection();
-            if ((this._last_parent)&&(this.appState.ui.activeMenu.page==this)) {
-                this.render(this._last_parent);
-            };
+        this.appState.save_db(
+        ).then(()=>{
+            return this.appState.restore_db();
+        }).then(()=>{
+            this.init();
             (message)&&(uiFeedback.showStatus(message, 'success'));
+            return new Promise((r,d)=>{r()});
         });
     },
 
-    downloadTracks: function(update) {
+    downloadTracks : function(update) {
         if (update) {
-            this.appState.data['release_details'] = this.appState.data['release_details'] || {};
+            Page.appState.data['release_details'] = Page.appState.data['release_details'] || {};
         } else {
-            this.appState.data['release_details'] = {};
+            Page.appState.data['release_details'] = {};
         };
 
         // increment: required details
-        let available = {};
-        Object.keys(this.appState.data['release_details']).forEach((id)=>{available[id] = 1});
-        this.appState._needed = Object.keys(this.appState.data['releases']).reduce((o, id)=>{
-            if (id in available) {
-                delete available[id];
-            } else {
-                o.push(id);
-            };
-            return o;
-        }, []);
+        let details = new Set(Object.keys(Page.appState.data.release_details));
+        let releases = (
+            new Set(Object.keys(Page.appState.data.releases))
+            .union(new Set(Object.keys(Page.appState.data.wanted)))
+        );
+
+        let deleted = details.difference(releases);
+        let needed = releases.difference(details);
 
         // decrement: obsolete details
-        if (Object.keys(available).length) {
-            Object.keys(available).forEach((id)=>{
-                delete this.appState.data['release_details'][id];
-            });
-        };
+        deleted.forEach(id=>{
+            delete Page.appState.data.release_details[id];
+        });
 
-        if (Object.keys(available).length||this.appState._needed.length)
-            alert(`Pending updates: new = ${this.appState._needed.length} , deleted = ${Object.keys(available).length}`);
+        if (deleted.size||needed.size)
+            alert(`Pending updates: new = ${needed.size} , deleted = ${deleted.size}`);
 
-        this.appState.progress(0, this.appState._needed.length, "Loading release details");
+        Page.appState.progress(0, needed.size, "Loading release details");
 
-        let getter = () => {
-            let ix = this.appState._needed.length;
-            let release_id = this.appState._needed.pop();
-            this.appState.API.call(
+        Page.appState._needed = Array.from(needed);
+
+        let getter = (resolve) => {
+            let ix = Page.appState._needed.length;
+            let release_id = Page.appState._needed.pop();
+            Page.appState.API.call(
                 `https://api.discogs.com/releases/${release_id}`
             ).then(data => {
-                this.appState.data['release_details'][data.id] = data;
-                this.appState.progress(ix);
-                if (this.appState._needed.length) {
-                    setTimeout(getter, 800);
+                Page.appState.data.release_details[data.id] = data;
+                Page.appState.progress(ix);
+                if (Page.appState._needed.length) {
+                    setTimeout(()=>{getter(resolve)}, 800);
                 } else {
-                    this.saveData("Tracks loaded");
+                    Page.saveData("Tracks loaded").then(resolve);
                 }
             });
         }
-        if (this.appState._needed.length)
-            getter();
-        else
-            this.saveData();
+
+        if (Page.appState._needed.length) {
+            return new Promise((resolve,d)=>{
+                getter(resolve);
+            })
+        } else {
+            return Page.saveData();
+        }
     },
 
     downloadData : function(update) {
@@ -363,8 +340,14 @@ const Page = {
         })
         .then((v)=>{return new Promise((r,d)=>{setTimeout(()=>{r(v)}, 1000)})})
         .then((data)=>{
-            this.appState.data['releases'] = Page.make_index(data.releases);
-            setTimeout(()=>{this.downloadTracks(update)}, 1000);
+            this.appState.data.releases = Page.make_index(data.releases);
+            return new Promise((r,d)=>{setTimeout(()=>{r()}, 1000)})
+        }).then(()=>{
+            return Page.downloadTracks(update);
+        }).then(()=>{
+            if ((Page._last_parent)&&(Page.appState.ui.activeMenu.page==Page)) {
+                Page.render(Page._last_parent);
+            }
         });
     },
  

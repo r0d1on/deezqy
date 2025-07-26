@@ -2,6 +2,7 @@
 
 import {Page as PageSetup} from './pages/Setup.js';
 import {Page as PageCollection} from './pages/Collection.js';
+import {Page as PageWanted} from './pages/Wanted.js';
 import {Page as PageSearch} from './pages/Search.js';
 import {Page as PageHelp} from './pages/Help.js';
 
@@ -14,14 +15,8 @@ import appState from './appState.js';
 const menuItems = [
     { name: 'Setup', page: PageSetup},
     { name: 'Collection',  page: PageCollection},
+    { name: 'Wanted',  page: PageWanted},
     { name: 'Search',  page: PageSearch},
-    /*
-    { name: 'Analytics', submenu: [
-        'growth over time',
-        'statistics',
-        'duplicates'
-    ] },
-    */
     { name: 'Help', page: PageHelp}
 ];
 
@@ -94,6 +89,69 @@ appState.progress =  function(stage, stages, name) {
     progressSection.innerHTML = `<span>${name}</span> <div class='progress-bar'><div class='progress-bar-fill' style='width:${percent}%;'></div></div> <span>${percent}%</span>`;
 }
 
+appState.restore_settings = async function() {
+    appState.token = appState.Cookie.get("token")||"";
+    appState.username = appState.Cookie.get("username")||"";
+}
+
+appState.save_db = async function() {
+    appState.data['timestamp'] = Date.now();
+    return Promise.all([
+        appState.DB.set(appState.username, appState.data['timestamp']),
+        appState.DB.set(appState.username + ".folders", appState.data.folders),
+        appState.DB.set(appState.username + ".releases", appState.data.releases),
+        appState.DB.set(appState.username + ".wanted", appState.data.wanted),
+        appState.DB.set(appState.username + ".release_details", appState.data.release_details)
+    ])
+}
+
+appState.restore_db = async function() {
+    appState.data = {};
+    appState.data['timestamp'] = 0;
+    appState.data.folders = {};
+    appState.data.releases = {};
+    appState.data.wanted = {};
+    appState.data.release_details = {};
+
+    if (appState.username) {
+        appState.progress(0, 1, "Restoring user's cached data");
+        return Promise.all([
+            appState.DB.get(appState.username),
+            appState.DB.get(appState.username + ".folders"),
+            appState.DB.get(appState.username + ".releases"),
+            appState.DB.get(appState.username + ".wanted"),
+            appState.DB.get(appState.username + ".release_details")
+        ]).then(([
+            timestamp,
+            folders,
+            releases,
+            wanted,
+            details
+        ])=>{
+            appState.data['timestamp'] = timestamp * 1;
+            appState.data.folders = folders || [];
+            appState.data.releases = releases || [];
+            appState.data.wanted = wanted || [];
+            appState.data.release_details = details || [];
+
+            if (Array.isArray(appState.data.folders))
+                appState.data.folders = Page.make_index(appState.data.folders);
+
+            if (Array.isArray(appState.data.wanted))
+                appState.data.wanted = Page.make_index(appState.data.wanted);
+
+            if (Array.isArray(appState.data.releases))
+                appState.data.releases = Page.make_index(appState.data.releases);
+
+            if (Array.isArray(appState.data.release_details))
+                appState.data.release_details = Page.make_index(appState.data.release_details);
+
+            appState.progress();
+            return new Promise((r, c)=>{r()})
+        });
+    };
+}
+
 appState.init = async function() {
     appState.showOverlay();
 
@@ -101,25 +159,30 @@ appState.init = async function() {
     appState.Cookie = Cookie.init(appState);
     appState.DB = DB.init(appState, false);
 
-    appState.Pages = {};
-    menuItems.forEach(item => {
-        if (item.page) {
-            item.page.init(appState);
-            appState.Pages[item.name] = item.page;
-        };
-        if (item.submenu) {
-            item.submenu.forEach(sub => {
-                if (sub.page) {
-                    sub.page.init(appState);
-                    appState.Pages[item.name + ":" + item.submenu] = sub.page;
-                };
-            });
-        };
-    });
-    renderMenu();
-    renderContent();
+    appState.restore_settings();
 
-    appState.hideOverlay();
+    appState.restore_db(
+    ).then(()=>{
+        appState.Pages = {};
+        menuItems.forEach(item => {
+            if (item.page) {
+                item.page.init(appState);
+                appState.Pages[item.name] = item.page;
+            };
+            if (item.submenu) {
+                item.submenu.forEach(sub => {
+                    if (sub.page) {
+                        sub.page.init(appState);
+                        appState.Pages[item.name + ":" + item.submenu] = sub.page;
+                    };
+                });
+            };
+        });
+        renderMenu();
+        renderContent();
+
+        appState.hideOverlay();        
+    })
 }
 
 /**
