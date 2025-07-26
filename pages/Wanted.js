@@ -39,7 +39,7 @@ const Page = {
                 this.appState.progress(stage, stages, "Loading wanted list");
             }
         ).then((data)=>{
-            this.appState.data.wanted = Page.appState.Pages.Collection.make_index(data.wants);
+            this.appState.data.wanted = Page.appState.make_index(data.wants);
             return new Promise((r,d)=>{setTimeout(()=>{r()}, 1000)})
         }).then(()=>{
             return Page.downloadTracks(true);
