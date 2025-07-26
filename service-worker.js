@@ -1,7 +1,7 @@
 // Basic service worker for offline support
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open('deezqy-cache-v1').then(cache => {
+    caches.open('deezqy-cache-v2').then(cache => {
       return cache.addAll([
         '',
         'index.html',
@@ -11,10 +11,11 @@ self.addEventListener('install', event => {
         'favicon.svg',
         'manifest.webmanifest',
         'loader.gif',
+        'pages/Setup.js',
         'pages/Collection.js',
+        'pages/Wanted.js',
         'pages/Help.js',
         'pages/Search.js',
-        'pages/Setup.js',
         'misc/listRenderer.js',
         'misc/uiFeedback.js',
         'misc/Utils.js',
