@@ -225,18 +225,8 @@ const Page = {
                     };
                 });
 
-                if ((Page._last_parent)&&(Page.appState.ui.activeMenu.page==Page)) {
-                    Page.render(Page._last_parent);
-                }
-                else {
-                    let scores = Page.appState.collection[list].map(row=>{
-                        return [row.release_id, Page.appState.collection[folder][row.release_id].score];
-                    });
-                    Page.appState.score = scores.reduce((p,c)=>p+c[1], 0) / scores.length;
-                    console.log("Collection average score: ", Page.appState.score);
-                }
-
-                Page.appState.rowCount = Object.keys(Page.appState.data[folder]).length;
+                Page.appState.renderContent();
+                
                 Page.appState.progress();
                 Page._working = false;
                 uiFeedback.showStatus(`${folder} list loaded`, 'success');
