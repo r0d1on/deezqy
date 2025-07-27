@@ -62,9 +62,9 @@ let API = {
             if ((errors||0) < 3) {
                 API.App.progress(undefined , undefined, "Too many requests, cooling down");
                 console.log("Retrying in 30 seconds");
-                setTimeout(()=>{
-                    API.call(url, progress, page, (errors||0) + 1);
-                }, 1000*30);
+                return (new Promise((r, d)=>{setTimeout(()=>{r()},1000*30)})).then(()=>{
+                    return API.call(url, progress, page, (errors||0) + 1);
+                })
             } else {
                 uiFeedback("API request failed", "warning");
             };
