@@ -217,36 +217,69 @@ const Page = {
         </tr>`;
         html += "</table>"
 
-        html += '<table class="collection-table release-info-table">';
-        html += `<tr><th colspan="3">Tracklist</th></tr>`;
-        (data.tracklist||[]).forEach(raw_track => {
+        html += '<div id="collection-table"></div>';
+
+        this._infoSection.innerHTML = html;
+
+        let list = (data.tracklist||[]).map((raw_track)=>{
             let track_artist = (
                 Utils.unifyName(((raw_track.artists||[]).map(item=>item.name)).join(' and '))||
                 Utils.unifyName(data.artists_sort)
             );
             raw_track.artist = track_artist;
-
             let track_title = raw_track.title;
             let track_code = Utils.getTrackCode(track_artist, track_title, this.appState.matching_type);
             let track_id = this.appState.collection.tracks_by_code[track_code];
-            let list_refs="";
-            if (track_id!==undefined) {
-                list_refs = "<ul><li>";
-                list_refs+= this.appState.collection.tracks[track_id].refs.map((ref)=>{
-                    return `(${ref.release_id}) ${ref.format} :: ${ref.artist} - ${ref.title} [${ref.track_position} // ${ref.duration}]`;
-                }).join("</li><li>")
-                list_refs += "</li></ul>";
-            };
-
-            html += `<tr>
-                <td>${raw_track.position}</td>
-                <td>${track_artist}</td>
-                <td>${raw_track.title} <span style='color:#888'>${raw_track.duration||''}</span></td>
-                <td>${list_refs}</td>
-            </tr>`;
+            let track = this.appState.collection.tracks[track_id];
+            return {
+                "raw_track":  raw_track,
+                "track": track
+            }
         });
-        html += '</table>';
-        this._infoSection.innerHTML = html;
+
+        new ListRenderer({
+            data: list,
+            columns: [
+                {name: "position", post:true, path: "row.raw_track.position"},
+                {name: "artist", post:true, path: "row.raw_track.artist"},
+                {name: "title", post:true, path:(row, ctx)=>{
+                    return `${row.raw_track.title} <span style='color:#888'>${row.raw_track.duration||''}</span>`;
+                }},
+                {name: "references", post:true, path:(row, ctx)=>{
+                    let list_refs = "";
+                    row['release_score'] = 100;
+                    if (row.track !== undefined) {
+                        list_refs = "";
+                        list_refs+= row.track.refs.map((ref)=>{
+                            let html_track = "";
+                            let time_this = row.raw_track.duration.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+                            let time_that = ref.duration.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+                            html_track += `<b style="color:${((Math.abs(time_this-time_that) < 10) ? 'blue' : 'red')}" title="${ref.duration}">♪</b> `;
+                            if (ref.folder=="wanted")
+                                html_track += `<b title="${ref.artist}">🔍<small style="color:red;">${ref.format} :  ${ref.artist} - ${ref.title} [${row.raw_track.duration}]</small></b>`;
+                            else {
+                                row['release_score'] = 0;
+                                html_track += `<b title="${ref.artist}"><small><a href="#${ref.release_id}">${ref.format}</a> : ${ref.artist} - ${ref.title} [${row.raw_track.duration}]</small></b>`;
+                            }
+                            return html_track;
+                        }).join("<br>")
+                        
+                        list_refs += "";   
+                    };
+                    return list_refs;
+                }},
+                {name: "score", post:true, path: "row.release_score"},
+
+            ],
+            parent: document.getElementById("collection-table"),
+            compact: false,
+            onScore: (score, rows)=>{
+                Page.appState.score = score;
+                Page.appState.rowCount = rows;
+                Page.appState.progress(-1);
+            }
+        });
+
     }
 }
 

@@ -27,6 +27,8 @@ const Page = {
     },
 
     LIST : [
+        {name: "release", path: "release", render:false},
+
         {name: "release_folder", path: "folder.name", filter:"", maxwidth:"90px", render: (row)=>{
             return row['release_folder'].toLowerCase().replace("uncategorized","*");
         }},
@@ -45,7 +47,21 @@ const Page = {
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
         {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
-        {name: "release_score", path: "release.score", post:true, maxwidth:"80px"},
+        {name: "release_score", path: (row, ctx)=>{ // 
+            // calculate release "uniqueness" - fraction of unreferenced tracks in it
+            if (ctx.release.score)
+                return ctx.release.score;
+            let scores = ctx.release.details.tracklist.map((track)=>{
+                if (!(track.id in Page.appState.collection.tracks)) {
+                    return 1; // special tracks are always "unique"
+                } else {
+                    return ((Page.appState.collection.tracks[track.id].releases||[1]).length == 1) * 1
+                };
+            });
+            ctx.release.score = scores.reduce((p, c) => p + c, 0) / ctx.release.details.tracklist.length;
+            ctx.release.score = Math.round(ctx.release.score * 1000) / 10;
+            return ctx.release.score
+        }, post:true, maxwidth:"80px"},
 
         //{name: "track_id", path: "track.id", filter:""},
         {name: "track_artist", path: "raw_track.artist", filter:"", maxwidth:"150px"},
@@ -58,14 +74,11 @@ const Page = {
             if ((refs===undefined)||(refs.length==0)) return;
 
             let html = "";
-            let first = true;
-
             refs.filter(ref=>{
                 return ref.release_id != row.release_id;
-            }).forEach((ref)=>{
-                if (!first) 
+            }).forEach((ref, ix)=>{
+                if (ix > 0)
                     html += "<br>";
-                first = false;
                 let time_this = row.track_time.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
                 let time_that = ref.duration.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
                 html += `<b style="color:${((Math.abs(time_this-time_that) < 10) ? 'blue' : 'red')}" title="${ref.duration}">♪</b> `;
@@ -81,7 +94,7 @@ const Page = {
 
     normalise : function({folder, list}={folder: "releases", list: "list"}) {
         if ((this.appState.data==undefined)||(this.appState.data.release_details==undefined)||(
-            Object.keys(this.appState.data.release_details).length==0
+            Object.keys(this.appState.data.release_details).length == 0
         )) {
             return;
         }
@@ -124,13 +137,14 @@ const Page = {
         this.appState.progress(0, Object.keys(this.appState.collection[folder]).length, `Normalising the collection [${folder}]`);
         this.appState.collection[list] = [];
 
-        let i=0;
+        let i = 0;
         let trackr = () => {
-            let r_ids = Object.keys(Page.appState.collection[folder]);
+            let src = Page.appState.collection[folder];
+            let r_ids = Object.keys(src);
             if (i < r_ids.length) {
                 Page.appState.progress(i);
                 let release_id = r_ids[i];
-                let release = Page.appState.collection[folder][release_id];
+                let release = src[release_id];
                 let format = release.basic_information.formats.map(e=>e.name).join("|")
                 release.format = format;
 
@@ -146,20 +160,20 @@ const Page = {
 
                     let id = Page.appState.collection.tracks_by_code[track_code];
                     if (id === undefined) {
-                        id = Object.keys(Page.appState.collection.tracks_by_code).length + 1
+                        id = Object.keys(Page.appState.collection.tracks_by_code).length + 1;
                         Page.appState.collection.tracks_by_code[track_code] = id;
                         Page.appState.collection.tracks[id] = {
                             id: id,
                             title: track_title,
                             artist: track_artist,
                             code: track_code,
-                            releases: [],
                             refs : []
                         };
                     };
                     let track = Page.appState.collection.tracks[id];
                     
-                    track.releases.push(release_id);
+                    track[folder] = track[folder] || [];
+                    track[folder].push(release_id);
                     track.refs.push({
                         release_id: release_id,
                         track_position: raw_track.position,
@@ -167,7 +181,7 @@ const Page = {
                         format: format,
                         title: release.details.title,
                         duration: raw_track.duration,
-                        folder: folder
+                        folder: folder,
                     });
 
                     raw_track.id = id;
@@ -191,42 +205,12 @@ const Page = {
                     else
                         loadTrack(raw_track);
                 });
-                i+=1;
+                i += 1;
                 setTimeout(trackr, 1);
 
             } else {
-
-                // calculate release "uniqueness" - fraction of unreferenced tracks in it
-                Object.keys(Page.appState.collection[folder]).forEach(release_id=>{
-                    let release = Page.appState.collection[folder][release_id];
-                    let scores = release.details.tracklist.map((track)=>{
-                        if (!(track.id in Page.appState.collection.tracks)) {
-                            return 1;
-                        } else {
-                            return (Page.appState.collection.tracks[track.id].releases.length == 1)*1
-                        };
-                    });
-                    release.score = scores.reduce((p,c)=>p+c, 0) / release.details.tracklist.length;
-                    release.score = Math.round(release.score*1000)/10;
-                });
-
-                // add "post" columns to the list
-                Page.LIST.forEach(col=>{
-                    if (col.post) {
-                        Page.appState.collection[list].forEach((row)=>{
-                            let release = Page.appState.collection[folder][row.release_id];
-                            row[col.name] = ListRenderer.extractListValue(
-                                {
-                                    "release": release
-                                },
-                                col.path
-                            )                            
-                        });
-                    };
-                });
-
-                Page.appState.renderContent();
-                
+                if (appState.ui.activeMenu.name in {"Wanted":1,"Collection":1})
+                    Page.appState.renderContent();
                 Page.appState.progress();
                 Page._working = false;
                 uiFeedback.showStatus(`${folder} list loaded`, 'success');

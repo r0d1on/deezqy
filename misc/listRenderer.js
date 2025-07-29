@@ -27,6 +27,7 @@ class ListRenderer {
         this.onFiltersChange = onFiltersChange;
         this.sortedBy = null;
         this.sortedOrder = 1;
+        this.precalc();
         this.render();
     }
     /**
@@ -95,6 +96,23 @@ class ListRenderer {
         }
         this.render();
     }
+
+    precalc() {
+        // calculate (one off) pre-render properties
+        this.data.forEach((row)=>{
+            this.columns.filter(col=>col.post).forEach(col=>{
+                row[col.name] = ListRenderer.extractListValue(
+                    {
+                        "release": row['release'],
+                        "row": row
+                    },
+                    col.path,
+                    row
+                )
+            });
+        });        
+    }
+
     /**
      * Get filtered and sorted data.
      * @returns {Array} Filtered and sorted data.
@@ -147,6 +165,8 @@ class ListRenderer {
         th.textContent = '#';
         headerRow.appendChild(th);
         this.columns.forEach((col, colIdx) => {
+            if (col.render==false)
+                return;
             const th = document.createElement('th');
             const span = document.createElement('span');
             let sortIndicator = '';
@@ -199,6 +219,9 @@ class ListRenderer {
 
         let depth = 0;
         this.columns.forEach((col, ix) => {
+            if (col.render === false) 
+                return;
+
             const td = document.createElement('td');
             let html = '';
             if (col.render)
@@ -209,23 +232,25 @@ class ListRenderer {
                 else
                     html = row[col.name] !== undefined ? row[col.name] : '';
             }
-            if (cells==null) {
+            if (cells == null) {
                 td.innerHTML = html;
-            } else if (cells[ix]!=html) {
+            } else if (cells[ix] != html) {
                 td.innerHTML = html;
                 cells[ix] = html;
-                for(let j=ix + 1; j<this.columns.length; j++) cells[j]=null;
+                for(let j = ix + 1; j < this.columns.length; j++) cells[j] = null;
             } else {
                 depth = ix + 1;
             }
             tr.appendChild(td);
         });
+
         if (this.onRowClick) {
             tr.onclick = (e) => {
                 this.onRowClick(row, e.currentTarget);
             };
             tr.style.cursor = 'pointer';
         }
+
         return [idc, tr, depth];
     }
     /**
@@ -238,7 +263,7 @@ class ListRenderer {
         this.createTableHeaders(table);
         const filteredSorted = this.getFilteredSortedData();
         let idc=0, tr=0, depth=0;
-        let anchor = { id:0, count:0, td:null };
+        let anchor = {id:0, count:0, td:null};
         let seen_releases = {};
         let cells = this.compact?{}:null;
         let scores = [];
@@ -293,10 +318,11 @@ class ListRenderer {
      * @param {object} context - Context object.
      * @returns {object} Flattened list item.
      */
-    static flattenItem(columns, context) {
+    static flattenItem(columns, context, post = false) {
         let list_item = {};
         columns.forEach(col => {
-            list_item[col.name] = ListRenderer.extractListValue(context, col.path, list_item);
+            if (post == (col.post||false))
+                list_item[col.name] = ListRenderer.extractListValue(context, col.path, list_item);
         });
         return list_item;
     }
