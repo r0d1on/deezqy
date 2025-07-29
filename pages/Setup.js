@@ -54,7 +54,6 @@ const Page = {
                     this.appState.username = e.target.value;
                     this.appState.Cookie.set("username", e.target.value);
                     this.appState.Pages.Collection.init();
-                    // TODO: this.Wanted.init();
                 }
             }
         ];
