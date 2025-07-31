@@ -153,6 +153,7 @@ class ListRenderer {
 
         return filtered;
     }
+
     /**
      * Create table headers.
      * @param {HTMLElement} table - Table element.
@@ -162,7 +163,11 @@ class ListRenderer {
         const headerRow = document.createElement('tr');
         // Row counter
         const th = document.createElement('th');
-        th.textContent = '#';
+        th.innerHTML = '<span style="font-size: 35px;font-weight: 100;">⚄</span>';
+        let that=this;
+        th.onclick=(e)=>{
+            that.random();
+        };
         headerRow.appendChild(th);
         this.columns.forEach((col, colIdx) => {
             if (col.render==false)
@@ -253,6 +258,31 @@ class ListRenderer {
 
         return [idc, tr, depth];
     }
+
+    random() {
+        const filteredSorted = this.getFilteredSortedData();
+        let releases = filteredSorted.reduce((p , c)=>{
+            if (!(c.release_id in p[1])) {
+                p[1][c.release_id] = true;
+                p[0].push(c.release_id);
+            };
+            return p;
+        }, [[],{}])[0];
+
+        let l = 0;
+        let r = releases.length;
+        let p = (r-l)>>1;
+        while(l < r-1) {
+            if (Math.random()>0.5) {
+                r=p;
+            } else {
+                l=p;
+            }
+            p = (r+l)>>1;
+        };
+        this.setFilter(this.columns.map(i=>i.name).indexOf("release_id"), releases[l]);
+    }
+
     /**
      * Render the list/table.
      */
