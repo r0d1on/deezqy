@@ -29,11 +29,11 @@ const Page = {
     LIST : [
         {name: "release", path: "release", render:false},
 
-        {name: "release_folder", path: "folder.name", filter:"", maxwidth:"90px", render: (row)=>{
+        {name: "release_folder", path: "folder.name", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
             return row['release_folder'].toLowerCase().replace("uncategorized","*");
         }},
 
-        {name: "release_id", path: "release.id", filter:"", maxwidth:"90px", render: (row)=>{
+        {name: "release_id", path: "release.id", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
             return `<a href="https://www.discogs.com/release/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
         }},
 
@@ -47,7 +47,7 @@ const Page = {
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
         {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
-        {name: "release_score", path: (row, ctx)=>{ // 
+        {name: "release_score", sortable:true, path: (row, ctx)=>{
             // calculate release "uniqueness" - fraction of unreferenced tracks in it
             if (ctx.release.score)
                 return ctx.release.score;
@@ -55,7 +55,15 @@ const Page = {
                 if (!(track.id in Page.appState.collection.tracks)) {
                     return 1; // special tracks are always "unique"
                 } else {
-                    return ((Page.appState.collection.tracks[track.id].releases||[1]).length == 1) * 1
+                    let unique = !(Page.appState.collection.tracks[track.id].refs.some((ref)=>{
+                        if (ctx.release.id==ref.release_id)
+                            return false;
+                        if (ref.folder=="wanted")
+                            return false;
+                        let delta = Page.durationDiff(ref.duration, track.duration);
+                        return ((delta <= 25)||(delta == 1/0));
+                    }));
+                    return unique;
                 };
             });
             ctx.release.score = scores.reduce((p, c) => p + c, 0) / ctx.release.details.tracklist.length;
@@ -79,9 +87,14 @@ const Page = {
             }).forEach((ref, ix)=>{
                 if (ix > 0)
                     html += "<br>";
-                let time_this = row.track_time.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
-                let time_that = ref.duration.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
-                html += `<b style="color:${((Math.abs(time_this-time_that) < 10) ? 'blue' : 'red')}" title="${ref.duration}">♪</b> `;
+                let diff = Page.durationDiff(row.track_time, ref.duration);
+                let color = "blue";
+                if (diff == (1/0)) {
+                    color = "gray";
+                } else if (diff > 25) {
+                    color = "red";
+                }
+                html += `<b title="${ref.duration}" style="color:${color}"><small>[${ref.duration}]</small></b> `;
                 if (ref.folder=="wanted")
                     html += `<b title="${ref.artist}">🔍<small style="color:red;">${ref.format} : ${ref.title}</small></b>`;
                 else
@@ -91,6 +104,14 @@ const Page = {
             return html;
         }},
     ],
+
+    durationDiff : function(duration1, duration2) {
+        if ((duration1=="") || (duration2=="") || (duration1===undefined) || (duration2===undefined))
+            return 1/0;
+        let time_this = duration1.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+        let time_that = duration2.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+        return Math.abs(time_this-time_that);
+    },
 
     normalise : function({folder, list}={folder: "releases", list: "list"}) {
         if ((this.appState.data==undefined)||(this.appState.data.release_details==undefined)||(

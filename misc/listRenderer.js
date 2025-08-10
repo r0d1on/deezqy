@@ -174,13 +174,19 @@ class ListRenderer {
                 return;
             const th = document.createElement('th');
             const span = document.createElement('span');
-            let sortIndicator = '';
-            if (this.sortedBy === colIdx) {
-                sortIndicator = this.sortedOrder === 1 ? ' ▲' : ' ▼';
-            }
-            span.textContent = sortIndicator + (col.name.split('_')[1] || col.name);
-            span.style.cursor = 'pointer';
-            span.onclick = () => this.sortBy(colIdx);
+            span.innerHTML = (col.name.split('_')[1] || col.name);
+
+            let sortIndicator = null;
+            if (col.sortable) {
+                sortIndicator = document.createElement('span');
+                sortIndicator.innerHTML = "&nbsp;🞕";
+                if (this.sortedBy === colIdx)
+                    sortIndicator.innerHTML = this.sortedOrder === 1 ? '&nbsp;▲' : '&nbsp;▼';
+                sortIndicator.style.cursor = 'pointer';
+                sortIndicator.onclick = () => this.sortBy(colIdx);
+                span.appendChild(sortIndicator);
+            };
+
             th.appendChild(span);
             if (col.filter !== undefined) {
                 const input = document.createElement('input');
