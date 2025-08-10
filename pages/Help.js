@@ -37,7 +37,7 @@ const Page = {
                 </li>
                 <li>
                     <div class="help-key">Advanced Search:</div>
-                    <div class="help-desc">Use the <b>Search</b> tab to find releases by title, artist, track, country, format, or barcode. Results are shown in a sortable/filterable table. Click a result to view detailed release info and see if it matches any tracks in your collection.</div>
+                    <div class="help-desc">Use the <b>Search</b> tab to find new releases on Discogs by title, artist, track, country, format, or barcode. Results are shown in a sortable/filterable table. Click a result to view detailed release info and see if it matches any tracks in your collection. Uniqueness score of the release selected is shown on the bottom of the page and each track is cross-referenced against your collection.</div>
                 </li>
                 <li>
                     <div class="help-key">Track Matching Mode:</div>
