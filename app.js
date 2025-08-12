@@ -4,6 +4,7 @@ import {Page as PageSetup} from './pages/Setup.js';
 import {Page as PageCollection} from './pages/Collection.js';
 import {Page as PageWanted} from './pages/Wanted.js';
 import {Page as PageSearch} from './pages/Search.js';
+import {Page as PageAnalytics} from './pages/Analytics.js';
 import {Page as PageHelp} from './pages/Help.js';
 
 import {API} from './api/discogs.js';
@@ -17,6 +18,7 @@ const menuItems = [
     { name: 'Collection',  page: PageCollection},
     { name: 'Wanted',  page: PageWanted},
     { name: 'Search',  page: PageSearch},
+    { name: 'Analytics', page: PageAnalytics},
     { name: 'Help', page: PageHelp}
 ];
 

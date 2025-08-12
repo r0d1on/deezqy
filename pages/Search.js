@@ -19,7 +19,7 @@ const Page = {
         { name: 'release_thumb', path: 'result.thumb', maxwidth: '100px' , render: (row) => {
             return `<img src="${row.release_thumb}" style="width:100px;">`;
         }},
-        { name: 'release_year', path: 'result.year', maxwidth: '80px' },
+        { name: 'release_year', sortable:true, path: 'result.year', maxwidth: '80px' },
         { name: 'release_country', path: 'result.country', maxwidth: '100px' },
         { name: 'release_format', path: 'result.format', maxwidth: '180px', render: (row) => {
             return (row['release_format']||[]).join(", "); 
@@ -31,17 +31,17 @@ const Page = {
             return (row['release_style']||[]).join(", ");
         }},
         { name: 'release_title', path: 'result.title' },
-        { name: 'release_having', path: 'result.community.have' },
-        { name: 'release_wanting', path: 'result.community.want' },
-        { name: 'release_demand', path: (row) => {
+        { name: 'release_having', sortable:true, path: 'result.community.have' },
+        { name: 'release_wanting', sortable:true, path: 'result.community.want' },
+        { name: 'release_demand', sortable:true, path: (row) => {
             var have = row['release_having'] || 0;
             var want = row['release_wanting'] || 0;
             return (have + want) ? Math.round((want / (want + have)) * 1000) / 10 : '';
         }},
-        { name: 'release_have', path: 'result.user_data.in_collection', render: (row) => {
+        { name: 'release_have', sortable:true, path: 'result.user_data.in_collection', render: (row) => {
             return (row['release_have'] ? "\u2705" : "");
         }},
-        { name: 'release_want', path: 'result.user_data.in_wantlist', render: (row) => {
+        { name: 'release_want', sortable:true, path: 'result.user_data.in_wantlist', render: (row) => {
             return (row['release_want'] ? "\u2705" : "");
         }}
     ],

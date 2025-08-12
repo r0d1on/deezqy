@@ -60,7 +60,7 @@ const Page = {
                             return false;
                         if (ref.folder=="wanted")
                             return false;
-                        let delta = Page.durationDiff(ref.duration, track.duration);
+                        let delta = Utils.durationDiff(ref.duration, track.duration);
                         return ((delta <= 25)||(delta == 1/0));
                     }));
                     return unique;
@@ -87,7 +87,7 @@ const Page = {
             }).forEach((ref, ix)=>{
                 if (ix > 0)
                     html += "<br>";
-                let diff = Page.durationDiff(row.track_time, ref.duration);
+                let diff = Utils.durationDiff(row.track_time, ref.duration);
                 let color = "blue";
                 if (diff == (1/0)) {
                     color = "gray";
@@ -104,14 +104,6 @@ const Page = {
             return html;
         }},
     ],
-
-    durationDiff : function(duration1, duration2) {
-        if ((duration1=="") || (duration2=="") || (duration1===undefined) || (duration2===undefined))
-            return 1/0;
-        let time_this = duration1.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
-        let time_that = duration2.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
-        return Math.abs(time_this-time_that);
-    },
 
     normalise : function({folder, list}={folder: "releases", list: "list"}) {
         if ((this.appState.data==undefined)||(this.appState.data.release_details==undefined)||(
@@ -351,8 +343,29 @@ const Page = {
             parent: parent_div,
             compact: true,
             filters: Page.listFilters,
-            onFiltersChange: (filters) => {
+            sort: Page.listSort,
+            onFiltersChange: (filters, sortby) => {
                 Page.listFilters = filters.slice();
+                Page.listSort = sortby;
+            },
+            onRowClick: (row, target) => {
+                let clicker = target.querySelector(".clicker span");
+                (clicker)&&(clicker.switch({target:clicker}));
+            },
+            onRowDblCLick: function(row, target) {
+                let clicker = target.querySelector(".clicker span");
+                if (clicker==null)
+                    return;
+
+                Page.appState.API.call(
+                    `https://api.discogs.com/releases/${row.release_id}`
+                ).then(data => {
+                    // check if we can update detailed info on a release we have already
+                    if (data.id in Page.appState.data.release_details) {
+                        Page.appState.data.release_details[data.id] = data;
+                        Page.appState.Pages.Collection.saveData(`Release details updated: ${data.title}`);
+                    };
+                });                
             },
             onScore: (score, rows)=>{
                 Page.appState.score = score;

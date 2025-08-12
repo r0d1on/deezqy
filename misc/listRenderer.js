@@ -1,3 +1,4 @@
+import { Utils } from './Utils.js';
 /**
  * Generic list/table renderer with filtering and sorting.
  * @class ListRenderer
@@ -12,21 +13,24 @@ class ListRenderer {
      * @param {function} [options.onRowClick] - Row click handler.
      * @param {boolean} [options.compact] - Compact mode.
      * @param {Array} [options.filters] - Initial filter values.
+     * @param {Array} [options.sort] - Initial sort column and order.
      * @param {function} [options.onFiltersChange] - Filters change handler.
      * @param {function} [options.onScore] - Score handler.
+     * @param {function} [options.onRowDblClick] - Grouped Row double-click handler.
      */
-    constructor({ data, columns, parent, onRowClick, compact, filters, onFiltersChange, onScore }) {
+    constructor({ data, columns, parent, onRowClick, compact, filters, sort, onFiltersChange, onScore, onRowDblCLick }) {
         this.data = data;
         this.columns = columns;
         this.parent = parent;
         this.onRowClick = onRowClick;
         this.compact = compact;
         this.onScore = onScore;
+        this.onRowDblCLick = onRowDblCLick;
         // Use provided filters or default to columns' filter property
         this.filters = Array.isArray(filters) ? filters.slice() : columns.map(col => col.filter || '');
         this.onFiltersChange = onFiltersChange;
-        this.sortedBy = null;
-        this.sortedOrder = 1;
+        this.sortedBy = (sort===undefined) ? null:Math.abs(sort);
+        this.sortedOrder = (sort===undefined) ? 1:Math.sign(sort);
         this.precalc();
         this.render();
     }
@@ -41,7 +45,7 @@ class ListRenderer {
         let clicker = document.createElement("span");
         clicker.className = "clicker_symbol";
         clicker.innerHTML = "⊞";
-        clicker.onclick = (e) => {
+        clicker.switch = (e) => {
             Array.from(document.getElementsByClassName(`anc-${id}`)).forEach(
                 el => {
                     if (el.style.display === 'none') {
@@ -94,6 +98,7 @@ class ListRenderer {
             this.sortedBy = colIdx;
             this.sortedOrder = 1;
         }
+        if (this.onFiltersChange) this.onFiltersChange(this.filters, this.sortedBy*this.sortedOrder);
         this.render();
     }
 
@@ -101,7 +106,7 @@ class ListRenderer {
         // calculate (one off) pre-render properties
         this.data.forEach((row)=>{
             this.columns.filter(col=>col.post).forEach(col=>{
-                row[col.name] = ListRenderer.extractListValue(
+                row[col.name] = Utils.extractListValue(
                     {
                         "release": row['release'],
                         "row": row
@@ -254,14 +259,6 @@ class ListRenderer {
             }
             tr.appendChild(td);
         });
-
-        if (this.onRowClick) {
-            tr.onclick = (e) => {
-                this.onRowClick(row, e.currentTarget);
-            };
-            tr.style.cursor = 'pointer';
-        }
-
         return [idc, tr, depth];
     }
 
@@ -299,17 +296,31 @@ class ListRenderer {
         this.createTableHeaders(table);
         const filteredSorted = this.getFilteredSortedData();
         let idc=0, tr=0, depth=0;
-        let anchor = {id:0, count:0, td:null};
+        let anchor = {id:0, count:0, td:null, row:null};
         let seen_releases = {};
         let cells = this.compact?{}:null;
         let scores = [];
         filteredSorted.forEach((row, index) => {
             [idc, tr, depth] = this.createTableRow(row, index, seen_releases, cells);
+            if (this.onRowClick) {
+                tr.onclick = (e) => {
+                    this.onRowClick(row, e.currentTarget);
+                };
+                tr.style.cursor = 'pointer';
+            }
+            if (this.onRowDblCLick) {
+                tr.ondblclick = (e) => {
+                    this.onRowDblCLick(row, e.currentTarget);
+                };
+                tr.style.cursor = 'pointer';
+            };
+
             if (depth < 3) {
                 this.injectClicker(anchor);
                 anchor.id += 1;
                 anchor.count = 0;
                 anchor.td = idc;
+                anchor.row = row;
                 scores.push(row['release_score']);
             } else {
                 tr.className = `anc-${anchor.id}`;
@@ -358,7 +369,7 @@ class ListRenderer {
         let list_item = {};
         columns.forEach(col => {
             if (post == (col.post||false))
-                list_item[col.name] = ListRenderer.extractListValue(context, col.path, list_item);
+                list_item[col.name] = Utils.extractListValue(context, col.path, list_item);
         });
         return list_item;
     }
