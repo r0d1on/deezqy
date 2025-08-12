@@ -64,6 +64,10 @@ const Page = {
             onFiltersChange: (filters) => {
                 Page.listFilters = filters.slice();
             },
+            onRowClick: (row, target) => {
+                let clicker = target.querySelector(".clicker span");
+                (clicker)&&(clicker.switch({target:clicker}));
+            },            
             onScore: (score, rows)=>{
                 Page.appState.score = score;
                 Page.appState.rowCount = rows;

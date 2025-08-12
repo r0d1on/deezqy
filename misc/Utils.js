@@ -54,7 +54,39 @@ const Utils = {
             code = `${Utils.unifyTrackName(trackArtist).toLowerCase()}:${code}`;
         }
         return code;
-    }
+    },
+    /**
+     * Extract list value from context using a path.
+     * @param {object} context - Context object.
+     * @param {string|function} path - Path or function to extract value.
+     * @param {object} row - Row data.
+     * @returns {any} Extracted value.
+     */
+    extractListValue(context, path, row) {
+        if (path === undefined) 
+            return undefined;
+
+        if (typeof(path) === 'function')
+            return path(row, context);
+
+        if (typeof(path) === 'string')
+            path = path.split('.').reverse();
+
+        let key = path.pop();
+        let value = context[key];
+        if ((value === undefined) || (path.length === 0))
+            return value;
+        else
+            return this.extractListValue(value, path);
+    },
+
+    durationDiff : function(duration1, duration2) {
+        if ((duration1=="") || (duration2=="") || (duration1===undefined) || (duration2===undefined))
+            return 1/0;
+        let time_this = duration1.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+        let time_that = duration2.split(":").reverse().reduce((p,c,i)=>{return p+c*(60**i)},0);
+        return Math.abs(time_this-time_that);
+    },
 };
 
 export { Utils };
