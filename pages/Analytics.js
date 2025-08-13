@@ -99,7 +99,7 @@ const Page = {
             name: 'folder',
             label: 'By Folder',
             field: 'release.folder_id',
-            transform: (val) => Page.appState.collection.folders[val].name||"?"
+            transform: (val) => (Page.appState.collection.folders[val]||{}).name||"?"
         },
         {
             name: 'author',
