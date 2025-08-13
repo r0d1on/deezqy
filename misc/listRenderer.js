@@ -304,7 +304,11 @@ class ListRenderer {
             [idc, tr, depth] = this.createTableRow(row, index, seen_releases, cells);
             if (this.onRowClick) {
                 tr.onclick = (e) => {
-                    this.onRowClick(row, e.currentTarget);
+                    if ((e.target.localName=="img")&&(this.onRowDblCLick)) {
+                        this.onRowDblCLick(row, e.currentTarget);
+                    } else {
+                        this.onRowClick(row, e.currentTarget);
+                    }
                 };
                 tr.style.cursor = 'pointer';
             }
