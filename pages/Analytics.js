@@ -45,14 +45,21 @@ const Page = {
             aggregations: ['average'],
             transform: (r) => [r, 1]
         },
-        { 
+        {
+            name: 'rating',
+            label: 'Release rating',
+            field: 'release.rating',
+            aggregations: ['average'],
+            transform: (r) => [r, 1]
+        },
+        {
             name: 'price', 
             label: 'Release price (lowest)',
             field: 'release.details.lowest_price',
             aggregations: ['total', 'average'],
             transform: (r) => [r, 1]
         },
-        { 
+        {
             name: 'duration', 
             label: 'Track duration',
             field: 'release',
