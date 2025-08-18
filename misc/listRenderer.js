@@ -9,7 +9,6 @@ class ListRenderer {
      * @param {object} options - Renderer options.
      * @param {Array} options.data - Data to render.
      * @param {Array} options.columns - Column definitions.
-     * @param {HTMLElement} options.parent - Parent DOM element.
      * @param {function} [options.onRowClick] - Row click handler.
      * @param {boolean} [options.compact] - Compact mode.
      * @param {Array} [options.filters] - Initial filter values.
@@ -18,10 +17,10 @@ class ListRenderer {
      * @param {function} [options.onScore] - Score handler.
      * @param {function} [options.onRowDblClick] - Grouped Row double-click handler.
      */
-    constructor({ data, columns, parent, onRowClick, compact, filters, sort, onFiltersChange, onScore, onRowDblCLick }) {
+    constructor({ data, columns, onRowClick, compact, filters, sort, onFiltersChange, onScore, onRowDblCLick }) {
         this.data = data;
         this.columns = columns;
-        this.parent = parent;
+        this.post_columns = this.columns.filter(col=>col.post);
         this.onRowClick = onRowClick;
         this.compact = compact;
         this.onScore = onScore;
@@ -31,9 +30,9 @@ class ListRenderer {
         this.onFiltersChange = onFiltersChange;
         this.sortedBy = (sort===undefined) ? null:Math.abs(sort);
         this.sortedOrder = (sort===undefined) ? 1:Math.sign(sort);
-        this.precalc();
-        this.render();
+        this.cache = {};
     }
+
     /**
      * Inject a clicker element for expandable rows.
      * @param {object} anchor - Anchor object with td and id.
@@ -60,6 +59,7 @@ class ListRenderer {
         anchor.td.appendChild(clicker);
         anchor.td.className = "clicker";
     }
+
     /**
      * Set new data and re-render.
      * @param {Array} data - New data array.
@@ -68,6 +68,7 @@ class ListRenderer {
         this.data = data;
         this.render();
     }
+
     /**
      * Set new columns and re-render.
      * @param {Array} columns - New columns array.
@@ -77,6 +78,7 @@ class ListRenderer {
         this.filters = columns.map(col => col.filter || '');
         this.render();
     }
+
     /**
      * Set a filter value and re-render.
      * @param {number} idx - Filter index.
@@ -87,6 +89,7 @@ class ListRenderer {
         if (this.onFiltersChange) this.onFiltersChange(this.filters);
         this.render();
     }
+
     /**
      * Sort by a column and re-render.
      * @param {number} colIdx - Column index.
@@ -102,20 +105,28 @@ class ListRenderer {
         this.render();
     }
 
-    precalc() {
-        // calculate (one off) pre-render properties
-        this.data.forEach((row)=>{
-            this.columns.filter(col=>col.post).forEach(col=>{
-                row[col.name] = Utils.extractListValue(
+    precalc(row) {
+        // calculate pre-render properties
+        this.post_columns.forEach(col=>{
+            let cached_row = this.cache[row.id];
+            if (cached_row===undefined) {
+                cached_row = {};
+                this.cache[row.id] = cached_row;
+            };
+            let cached_value = cached_row[col.name];
+            if (cached_value===undefined) {
+                cached_value = Utils.extractListValue(
                     {
                         "release": row['release'],
                         "row": row
                     },
                     col.path,
                     row
-                )
-            });
-        });        
+                );
+                cached_row[col.name] = cached_value;
+            };
+            row[col.name] = cached_value;
+        });
     }
 
     /**
@@ -211,6 +222,7 @@ class ListRenderer {
         thead.appendChild(headerRow);
         table.appendChild(thead);
     }
+
     /**
      * Create a table row.
      * @param {object} row - Row data.
@@ -226,9 +238,9 @@ class ListRenderer {
         let idc;
         if (row.release_id && !(row.release_id in seen_releases)) {
             seen_releases[row.release_id] = 1;
-            td.innerHTML = `<small><b id="${row.release_id}">${index+1}</b></small>`;
+            td.innerHTML = `<small><b id="${row.release_id}">${index + 1}</b></small>`;
         } else {
-            td.textContent = index+1;
+            td.textContent = index + 1;
         }
         tr.appendChild(td);
         idc = td;
@@ -276,7 +288,7 @@ class ListRenderer {
         let r = releases.length;
         let p = (r-l)>>1;
         while(l < r-1) {
-            if (Math.random()>0.5) {
+            if (Math.random() > 0.5) {
                 r=p;
             } else {
                 l=p;
@@ -289,8 +301,12 @@ class ListRenderer {
     /**
      * Render the list/table.
      */
-    render() {
-        this.parent.innerHTML = '';
+    render(parent) {
+        parent = parent || this.parent;
+        if (parent===undefined)
+            return;
+        this.parent = parent;
+        parent.innerHTML = '';
         const table = document.createElement('table');
         table.className = 'collection-table';
         this.createTableHeaders(table);
@@ -301,6 +317,8 @@ class ListRenderer {
         let cells = this.compact?{}:null;
         let scores = [];
         filteredSorted.forEach((row, index) => {
+            this.precalc(row);
+
             [idc, tr, depth] = this.createTableRow(row, index, seen_releases, cells);
             if (this.onRowClick) {
                 tr.onclick = (e) => {
@@ -319,7 +337,7 @@ class ListRenderer {
                 tr.style.cursor = 'pointer';
             };
 
-            if (depth < 3) {
+            if (depth < 5) {
                 this.injectClicker(anchor);
                 anchor.id += 1;
                 anchor.count = 0;
@@ -334,11 +352,12 @@ class ListRenderer {
             table.appendChild(tr);
         });
         this.injectClicker(anchor);
-        this.parent.appendChild(table);
+        parent.appendChild(table);
 
         let score = scores.reduce((p, c)=>p + c, 0) / scores.length;
         (this.onScore)&&(this.onScore(score, scores.length));
     }
+
     /**
      * Extract list value from context using a path.
      * @param {object} context - Context object.
@@ -363,6 +382,7 @@ class ListRenderer {
         else
             return ListRenderer.extractListValue(value, path)
     }
+
     /**
      * Flatten an item into a list item object.
      * @param {Array} columns - Column definitions.
