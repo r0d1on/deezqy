@@ -11,6 +11,7 @@ import { uiFeedback } from '../misc/uiFeedback.js';
 const Page = {
     /** @type {object} */
     appState: null,
+    renderer: null,
     /**
      * Initialize the page with appState
      * @param {object} appState - Centralized application state
@@ -22,12 +23,15 @@ const Page = {
         this.appState.collection = {};
         this.appState.collection.tracks_by_code = {};
         this.appState.collection.tracks = {};
+        this.renderer = null;
 
         Page.normalise();
     },
 
     LIST : [
+        {name: "id", path: (row, ctx)=>`${ctx.release.id}-${ctx.track.id}`, render:false},
         {name: "release", path: "release", render:false},
+        {name: "track", path: "track", render:false},
 
         {name: "release_folder", path: "folder.name", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
             return row['release_folder'].toLowerCase().replace("uncategorized","*");
@@ -49,8 +53,6 @@ const Page = {
         {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
         {name: "release_score", sortable:true, path: (row, ctx)=>{
             // calculate release "uniqueness" - fraction of unreferenced tracks in it
-            if (ctx.release.score)
-                return ctx.release.score;
             let scores = ctx.release.details.tracklist.map((track)=>{
                 if (!(track.id in Page.appState.collection.tracks)) {
                     return 1; // special tracks are always "unique"
@@ -77,8 +79,8 @@ const Page = {
         {name: "track_name", path: "track.title", filter:"", maxwidth:"250px"},
         {name: "track_time", path: "raw_track.duration", maxwidth:"80px"},
 
-        {name: "track_seen", path: "track.refs", render: (row)=>{
-            let refs = row.track_seen;
+        {name: "track_seen", path: (row, ctx)=>{
+            let refs = row.track.refs;
             if ((refs===undefined)||(refs.length==0)) return;
 
             let html = "";
@@ -102,7 +104,7 @@ const Page = {
             });
 
             return html;
-        }},
+        }, post:true},
     ],
 
     normalise : function({folder, list}={folder: "releases", list: "list"}) {
@@ -222,8 +224,11 @@ const Page = {
                 setTimeout(trackr, 1);
 
             } else {
-                if (appState.ui.activeMenu.name in {"Wanted":1,"Collection":1})
+                if (appState.ui.activeMenu.name in {"Wanted":1,"Collection":1}) {
                     Page.appState.renderContent();
+                };
+                appState.Pages.Collection.renderer = null;
+                appState.Pages.Wanted.renderer = null;
                 Page.appState.progress();
                 Page._working = false;
                 uiFeedback.showStatus(`${folder} list loaded`, 'success');
@@ -337,10 +342,9 @@ const Page = {
             return;
         }
 
-        new ListRenderer({
+        this.renderer = this.renderer || new ListRenderer({
             data: this.appState.collection.list,
             columns: Page.LIST,
-            parent: parent_div,
             compact: true,
             filters: Page.listFilters,
             sort: Page.listSort,
@@ -373,6 +377,7 @@ const Page = {
                 Page.appState.progress(-1);
             }
         });
+        this.renderer.render(parent_div);
     },
 
     render : function(parent) {

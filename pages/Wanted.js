@@ -9,7 +9,10 @@ import { uiFeedback } from '../misc/uiFeedback.js';
  */
 const Page = {
     /** @type {object} */
+
     appState: null,
+    renderer: null,
+
     /**
      * Initialize the page with appState
      * @param {object} appState - Centralized application state
@@ -17,6 +20,7 @@ const Page = {
     init(appState) {
         this.appState = appState || this.appState;
         appState = this.appState;
+        this.renderer = null;
     },
 
     saveData : function(message) {
@@ -54,11 +58,11 @@ const Page = {
         parent_div.innerHTML = '';
         if ((this.appState.collection==undefined)||(this.appState.collection.wanted_list==undefined)) {
             return;
-        }
-        new ListRenderer({
+        };
+
+        this.renderer = this.renderer || new ListRenderer({
             data: this.appState.collection.wanted_list,
             columns: Page.appState.Pages.Collection.LIST,
-            parent: parent_div,
             compact: true,
             filters: Page.listFilters,
             onFiltersChange: (filters) => {
@@ -74,6 +78,8 @@ const Page = {
                 Page.appState.progress(-1);
             }
         });
+        this.renderer.render(parent_div);
+
     },
 
     render : function(parent) {
