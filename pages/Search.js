@@ -144,14 +144,14 @@ const Page = {
         new ListRenderer({
             data: flattened,
             columns: this.LIST,
-            parent: this._resultsSection,
             compact: false,
             onRowClick: (row, target) => {
                 this.fetchReleaseInfo(row.release_id);
                 Array.from(this._resultsSection.querySelectorAll('tr')).forEach(tr=>tr.classList.remove('collection-row-active'));
-                target.classList.add('collection-row-active'); // +1 for header row
+                target.classList.add('collection-row-active');
             }
-        });
+        }).render(this._resultsSection);
+        
     },
 
     search: function() {
