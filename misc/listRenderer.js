@@ -136,6 +136,8 @@ class ListRenderer {
     getFilteredSortedData() {
         this.sorted = this.data || [];
 
+        this.sorted.forEach(row=>{this.precalc(row)});
+
         // sort dataset if needed
         let sort_code = `${this.sortedBy}:${this.sortedOrder}`;
         if ((this.sortedBy !== null) && (sort_code != this._sorted_by)) {
@@ -149,9 +151,10 @@ class ListRenderer {
         };
 
         // filter data only if any filters defined
-        let filtered = [];
+        let filtered = this.sorted;
+
         if (!this.filters.every(value => value === undefined || value === '')) {
-            filtered = this.sorted.filter(item => {
+            filtered = filtered.filter(item => {
                 return this.columns.every((col, idx) => {
                     return (
                         (this.filters[idx] === undefined || this.filters[idx].length === 0) ||
@@ -163,8 +166,6 @@ class ListRenderer {
                     );
                 });
             });
-        } else {
-            filtered = this.sorted;
         };
 
         return filtered;
@@ -310,15 +311,17 @@ class ListRenderer {
         const table = document.createElement('table');
         table.className = 'collection-table';
         this.createTableHeaders(table);
-        const filteredSorted = this.getFilteredSortedData();
+
+        this._filteredSorted = this.getFilteredSortedData();
+        if (parent.fake)
+            return;
+
         let idc=0, tr=0, depth=0;
         let anchor = {id:0, count:0, td:null, row:null};
         let seen_releases = {};
         let cells = this.compact?{}:null;
         let scores = [];
-        filteredSorted.forEach((row, index) => {
-            this.precalc(row);
-
+        this._filteredSorted.forEach((row, index) => {
             [idc, tr, depth] = this.createTableRow(row, index, seen_releases, cells);
             if (this.onRowClick) {
                 tr.onclick = (e) => {

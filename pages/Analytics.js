@@ -2,6 +2,7 @@
 
 import { Utils } from '../misc/Utils.js';
 import { uiFeedback } from '../misc/uiFeedback.js';
+import { ListRenderer } from '../misc/listRenderer.js';
 
 /**
  * Analytics Page Module
@@ -182,6 +183,9 @@ const Page = {
         // Group and aggregate data
         const groups = {};
         Object.values(this.appState.collection.releases).forEach(item => {
+            if (!(item.id in this.visible_releases))
+                return;
+
             let groupKey = Utils.extractListValue({release:item}, groupField);
             groupKey = this.selectedGroup.transform ? 
                 this.selectedGroup.transform(groupKey) : 
@@ -212,6 +216,25 @@ const Page = {
             .filter(a=>a[0]!='various')
         );
 
+        // generate table with the data
+        new ListRenderer({
+            data: rawData.reduce(
+                (p, c)=>{
+                    let o = {};
+                    o[this.selectedGroup.name] = c[0];
+                    o[`${this.selectedAggregation} ${this.selectedValue.name}`] =  Math.trunc(c[1]*100)/100;
+                    p.push(o);
+                    return p;
+                }, []
+            ),
+            columns: [
+                {name: `${this.selectedGroup.name}`, sortable:true},
+                {name: `${this.selectedAggregation} ${this.selectedValue.name}`, sortable:true, maxwidth:"90px"},
+            ],
+            compact: false
+        }).render(this._listArea);
+
+        // generate plot with the data
         const plotData = {
             x: rawData.map(a=>a[0]),
             y: rawData.map(a=>a[1]),
@@ -232,7 +255,7 @@ const Page = {
             }
         };
 
-        Plotly.newPlot(this._plotArea, [plotData], layout);
+        Plotly&&Plotly.newPlot(this._plotArea, [plotData], layout);
     },
 
     /**
@@ -310,10 +333,30 @@ const Page = {
         parent.appendChild(plotArea);
         this._plotArea = plotArea;
 
+        const listArea = document.createElement('div');
+        listArea.className = 'analytics-list';
+        listArea.id = 'analytics-list';
+        parent.appendChild(listArea);
+        this._listArea = listArea;
+
+        let renderer = new ListRenderer({
+            data: this.appState.collection.list,
+            columns: Page.appState.Pages.Collection.LIST,
+            compact: false,
+            filters: Page.appState.Pages.Collection.listFilters,
+        });
+        renderer.render({fake:true});
+
+        this.visible_releases = renderer._filteredSorted.reduce((p, c)=>{
+            p[c.release_id]=true;
+            return p
+        },{});
+
         // Generate initial report
         if (this.appState.collection && this.appState.collection.list) {
             this._generateReport();
         }
+
     }
 };
 
