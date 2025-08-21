@@ -224,7 +224,7 @@ const Page = {
                 setTimeout(trackr, 1);
 
             } else {
-                if (appState.ui.activeMenu.name in {"Wanted":1,"Collection":1}) {
+                if (appState.ui.activeMenu.name in {"Wanted":1,"Collection":1, "Analytics":1}) {
                     Page.appState.renderContent();
                 };
                 appState.Pages.Collection.renderer = null;
