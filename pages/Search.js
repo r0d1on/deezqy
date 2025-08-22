@@ -232,6 +232,7 @@ const Page = {
             let track_id = this.appState.collection.tracks_by_code[track_code];
             let track = this.appState.collection.tracks[track_id];
             return {
+                "id": track_code,
                 "raw_track":  raw_track,
                 "track": track
             }
@@ -271,14 +272,13 @@ const Page = {
                 {name: "score", post:true, path: "row.release_score"},
 
             ],
-            parent: document.getElementById("collection-table"),
             compact: false,
             onScore: (score, rows)=>{
                 Page.appState.score = score;
                 Page.appState.rowCount = rows;
                 Page.appState.progress(-1);
             }
-        });
+        }).render(document.getElementById("collection-table"));
 
     }
 }
