@@ -224,6 +224,12 @@ const Page = {
                 setTimeout(trackr, 1);
 
             } else {
+                Page.appState.collection[list].sort((a, b) => {
+                    if (a.release.date_added < b.release.date_added) return 1;
+                    if (a.release.date_added > b.release.date_added) return -1;
+                    return 0;
+                });                
+                
                 if (appState.ui.activeMenu.name in {"Wanted":1,"Collection":1, "Analytics":1}) {
                     Page.appState.renderContent();
                 };
