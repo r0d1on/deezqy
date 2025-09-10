@@ -19,7 +19,7 @@ assertEqual(Utils.unifyName('The Beatles'), 'beatles', 'unifyName removes "the"'
 assertEqual(Utils.unifyName('AC/DC'), 'ac/dc', 'unifyName lowercases and keeps slash');
 
 // Test getTrackCode
-assertEqual(Utils.getTrackCode('Artist', 'Song', 'title_only'), 'song', 'getTrackCode title_only');
-assertEqual(Utils.getTrackCode('Artist', 'Song', 'author_and_title'), 'artist:song', 'getTrackCode author_and_title');
+assertEqual(Utils.getTrackCode('Artist', 'Song', 'title only'), 'song', 'getTrackCode title_only');
+assertEqual(Utils.getTrackCode('Artist', 'Song', 'author ? title'), 'artist:song', 'getTrackCode author_and_title');
 
 console.log('All Utils tests passed!');
