@@ -62,7 +62,7 @@ const Page = {
 
         this.renderer = this.renderer || new ListRenderer({
             data: this.appState.collection.wanted_list,
-            columns: Page.appState.Pages.Collection.LIST,
+            columns: Page.appState.Pages.Collection.getColumns(),
             compact: true,
             filters: Page.listFilters,
             onFiltersChange: (filters) => {

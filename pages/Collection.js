@@ -48,6 +48,32 @@ const Page = {
         {name: "release_thumb", path: "release.basic_information.thumb", maxwidth:"65px", render: (row)=>{
             return `<img style="width:60px;" src="${[row['release_thumb']]}"/>`
         }},
+
+        {name: "release_date", sortable:true, filter:"", path: (row, ctx)=>{
+            let dt = new Date(row.release.date_added);
+            var start = new Date(dt.getFullYear(), 0, 0);
+            return `${Math.floor((dt - start) / (7 * 1000 * 60 * 60 * 24))}:${row.release.date_added.replace("T"," ")}`;
+        }, maxwidth:"120px", extended:true},
+
+        {name: "release_price", sortable:true, filter:"", path: (row, ctx)=>{
+            return row.release.details.lowest_price||"";
+        }, maxwidth:"65px", extended:true},
+
+        {name: "release_media", sortable:true, filter:"", path: (row, ctx)=>{
+            let notes = (row.release.notes||[]).filter(e=>e.field_id==1);
+            return (notes.length>0)?notes[0].value:"-";
+        }, maxwidth:"80px", extended:true},
+
+        {name: "release_sleeve", sortable:true, filter:"", path: (row, ctx)=>{
+            let notes = (row.release.notes||[]).filter(e=>e.field_id==2);
+            return (notes.length>0)?notes[0].value:"-";
+        }, maxwidth:"80px", extended:true},
+
+        {name: "release_notes", sortable:true, filter:"", path: (row, ctx)=>{
+            let notes = (row.release.notes||[]).filter(e=>e.field_id==3);
+            return (notes.length>0)?notes[0].value:"-";
+        }, maxwidth:"120px", extended:true},
+
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
         {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
@@ -106,6 +132,12 @@ const Page = {
             return html;
         }, post:true},
     ],
+
+    getColumns : function() {
+        return this.LIST.filter((e)=>{
+            return (Page.appState.columns_set == "extended")||(!!!e.extended)
+        })
+    },
 
     normalise : function({folder, list}={folder: "releases", list: "list"}) {
         if ((this.appState.data==undefined)||(this.appState.data.release_details==undefined)||(
@@ -209,7 +241,7 @@ const Page = {
                         "track": track,
                         "raw_track": raw_track
                     };
-                    let list_item = ListRenderer.flattenItem(Page.LIST, context);
+                    let list_item = ListRenderer.flattenItem(Page.getColumns(), context);
                     Page.appState.collection[list].push(list_item);
                 };
 
@@ -300,7 +332,7 @@ const Page = {
         }
 
         if (Page.appState._needed.length) {
-            return new Promise((resolve,d)=>{
+            return new Promise((resolve, d)=>{
                 getter(resolve);
             })
         } else {
@@ -350,7 +382,7 @@ const Page = {
 
         this.renderer = this.renderer || new ListRenderer({
             data: this.appState.collection.list,
-            columns: Page.LIST,
+            columns: Page.getColumns(),
             compact: true,
             filters: Page.listFilters,
             sort: Page.listSort,

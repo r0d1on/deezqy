@@ -27,7 +27,18 @@ const Page = {
         settingsContainer.className = "settings-container";
 
         settingsContainer.appendChild(this.renderCredentialsGroup());
-        settingsContainer.appendChild(this.renderOtherSettingsGroup());
+        settingsContainer.appendChild(this.renderSwitch(
+            "Track match by:",
+            ["author & title", "title only"],
+            "matching_type",
+            true
+        ));
+        settingsContainer.appendChild(this.renderSwitch(
+            "Columns set:",
+            ["basic", "extended"],
+            "columns_set",
+            true
+        ));
 
         parent.appendChild(settingsContainer);
     },
@@ -104,13 +115,13 @@ const Page = {
         return credentialsGroup;
     },
 
-    renderOtherSettingsGroup: function() {
-        let otherSettingsGroup = document.createElement("div");
-        otherSettingsGroup.className = "settings-group other-settings-group";
+    renderSwitch: function(label, text, value_key, renormalize) {
+        let switchGroup = document.createElement("div");
+        switchGroup.className = "settings-group other-settings-group";
         let matchTypeLabel = document.createElement("label");
-        matchTypeLabel.textContent = "Track match by:";
+        matchTypeLabel.textContent = label;
         matchTypeLabel.className = "settings-label";
-        otherSettingsGroup.appendChild(matchTypeLabel);
+        switchGroup.appendChild(matchTypeLabel);
         let switchContainer = document.createElement("div");
         switchContainer.className = "switch-container";
         let switchLabel = document.createElement("label");
@@ -124,18 +135,19 @@ const Page = {
         knob.className = "switch-knob";
         slider.appendChild(knob);
         let leftText = document.createElement("span");
-        leftText.textContent = "author & title";
+        leftText.textContent = text[0];
         leftText.className = "switch-left-text";
         let rightText = document.createElement("span");
-        rightText.textContent = "title only";
+        rightText.textContent = text[1];
         rightText.className = "switch-right-text";
-        let matchType = this.appState.matching_type || "author_and_title";
-        switchInput.checked = (matchType === "title_only");
+        switchInput.checked = ((this.appState[value_key] || text[0]) === text[1]);
+
         knob.style.left = switchInput.checked ? "30px" : "2px";
-        this.appState.matching_type = switchInput.checked ? "title_only" : "author_and_title";
+
+        this.appState[value_key] = text[switchInput.checked*1];
         switchInput.onchange = (e) => {
             knob.style.left = e.target.checked ? "30px" : "2px";
-            this.appState.matching_type = e.target.checked ? "title_only" : "author_and_title";
+            this.appState[value_key] = text[e.target.checked*1];
             if (e.target.checked) {
                 rightText.classList.add("switch-active-text")
                 leftText.classList.remove("switch-active-text")
@@ -143,7 +155,8 @@ const Page = {
                 leftText.classList.add("switch-active-text")
                 rightText.classList.remove("switch-active-text")
             }
-            setTimeout(this.appState.Pages.Collection.normalise(), 100);
+            if (renormalize)
+                setTimeout(this.appState.Pages.Collection.normalise(), 100);
         };
         switchLabel.appendChild(leftText);
         switchLabel.appendChild(slider);
@@ -156,8 +169,8 @@ const Page = {
             return false;
         };
         switchContainer.appendChild(switchLabel);
-        otherSettingsGroup.appendChild(switchContainer);
-        return otherSettingsGroup;
+        switchGroup.appendChild(switchContainer);
+        return switchGroup;
     }
 }
 
