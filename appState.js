@@ -26,7 +26,8 @@ const appState = {
   collection: {},
   token: '',
   username: '',
-  matchingType: 'author_and_title',
+  matching_type: 'author & title',
+  columns_set: 'basic',
   ui: {
     activeMenu: null,
     activeSubmenu: null

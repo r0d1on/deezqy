@@ -45,12 +45,12 @@ const Utils = {
      * Generate a track code for matching, based on artist, title, and matching type.
      * @param {string} trackArtist - The track artist.
      * @param {string} trackTitle - The track title.
-     * @param {string} matchingType - Matching type ("author_and_title" or "title_only").
+     * @param {string} matchingType - Matching type ("author & title" or "title only").
      * @returns {string} Track code for matching.
      */
     getTrackCode(trackArtist, trackTitle, matchingType) {
         let code = Utils.unifyTrackName(trackTitle).toLowerCase();
-        if (matchingType === "author_and_title") {
+        if (matchingType === "author & title") {
             code = `${Utils.unifyTrackName(trackArtist).toLowerCase()}:${code}`;
         }
         return code;

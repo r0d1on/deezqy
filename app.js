@@ -24,7 +24,6 @@ const menuItems = [
 
 appState.ui.activeMenu = menuItems[0];
 appState.ui.activeSubmenu = null;
-appState.matchingType = "author_and_title";
 
 // Overlay element for processing indication
 function createOverlay() {
