@@ -20,11 +20,6 @@ const Page = {
         this.appState = appState || this.appState;
         appState = this.appState;
 
-        this.appState.collection = {};
-        this.appState.collection.tracks_by_code = {};
-        this.appState.collection.tracks = {};
-        this.renderer = null;
-
         Page.normalise();
     },
 
@@ -157,8 +152,13 @@ const Page = {
         };
         this._working = true;
 
-        if (folder=="releases")
+        if (folder=="releases") {
+            this.appState.collection = {};
+            this.appState.collection.tracks_by_code = {};
+            this.appState.collection.tracks = {};
+            this.renderer = null;
             Page.normalise({folder : "wanted", list : "wanted_list"});
+        }
 
         // Normalise folders
         this.appState.collection['folders'] = structuredClone(this.appState.data.folders);
