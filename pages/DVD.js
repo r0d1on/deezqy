@@ -65,12 +65,15 @@ const Page = {
         {name: "film_rating", sortable:true, path: "film.vote_average", filter:"", maxwidth:"80px"},
 
         {name: "film_notes", sortable:true, filter:"", path: (row, ctx)=>{
-            let notes = (row.film.comments.notes||[]);
-            return (notes.length>0)?notes.join("<br>"):"-";
+            let notes = (row.film.comments||[]);
+            return (notes.length>0)?notes.join("<br>"):"";
         }, maxwidth:"120px", extended:false},
 
         //{name: "track_id", path: "track.id", filter:""},
         {name: "film_genres", path: "film.genres", filter:"", maxwidth:"150px"},
+        {name: "film_mark", path: ()=>0, filter:"", maxwidth:"40px", render: (row)=>{
+            return row.film_mark == 1 ? '<span style="color:green;">✓</span>' : '';
+        }},
     ],
 
     getColumns : function() {
@@ -168,9 +171,9 @@ const Page = {
                     r.folders = r.folders || {};
                     r.folders[folder.id] = r.folders[folder.id] || 1;
                     r.comments = r.comments || [];
-                    let c = data.comments[`movie:${r.id}`];
+                    let c = data.comments[`${r.media_type}:${r.id}`];
                     if (c)
-                        r.comments.push(data.name + " : " + c);
+                        r.comments.push(c);
                     
                     r.genres = r.genre_ids.map((i)=>{
                         return (this.appState.data.dvd_genres[i]||{name:i}).name;
@@ -248,12 +251,17 @@ const Page = {
             sort: Page.listSort,
 
             onFiltersChange: (filters, sortby) => {
-                Page.listFilters = filters.slice();
+                Page.listFilters = {...filters};
                 Page.listSort = sortby;
             },
             onRowClick: (row, target) => {
+                row.film_mark = 1 - row.film_mark;
+                ///Page.appState.data.dvd_items[row.id].film_seen = 1;
+                ///target.lastElementChild.innerHTML = Page.LIST[Page.LIST.length - 1].render(row);
                 let clicker = target.querySelector(".clicker span");
                 (clicker)&&(clicker.switch({target:clicker}));
+                //this.appState.renderContent();
+                Page.render(Page._last_parent);
             },
             onRowDblCLick: function(row, target) {
                 let clicker = target.querySelector(".clicker span");

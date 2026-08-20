@@ -387,7 +387,7 @@ const Page = {
             filters: Page.listFilters,
             sort: Page.listSort,
             onFiltersChange: (filters, sortby) => {
-                Page.listFilters = filters.slice();
+                Page.listFilters = {...filters};
                 Page.listSort = sortby;
             },
             onRowClick: (row, target) => {

@@ -11,7 +11,7 @@ class ListRenderer {
      * @param {Array} options.columns - Column definitions.
      * @param {function} [options.onRowClick] - Row click handler.
      * @param {boolean} [options.compact] - Compact mode.
-     * @param {Array} [options.filters] - Initial filter values.
+    * @param {object} [options.filters] - Initial filter values keyed by column name.
      * @param {Array} [options.sort] - Initial sort column and order.
      * @param {function} [options.onFiltersChange] - Filters change handler.
      * @param {function} [options.onScore] - Score handler.
@@ -25,8 +25,11 @@ class ListRenderer {
         this.compact = compact;
         this.onScore = onScore;
         this.onRowDblCLick = onRowDblCLick;
-        // Use provided filters or default to columns' filter property
-        this.filters = Array.isArray(filters) ? filters.slice() : columns.map(col => col.filter || '');
+        // Normalize filters by column name, including filters saved by older versions.
+        this.filters = columns.reduce((values, col, idx) => {
+            values[col.name] = Array.isArray(filters) ? filters[idx] : (filters?.[col.name] ?? col.filter ?? '');
+            return values;
+        }, {});
         this.onFiltersChange = onFiltersChange;
         this.sortedBy = (sort===undefined) ? null:Math.abs(sort);
         this.sortedOrder = (sort===undefined) ? 1:Math.sign(sort);
@@ -75,17 +78,20 @@ class ListRenderer {
      */
     setColumns(columns) {
         this.columns = columns;
-        this.filters = columns.map(col => col.filter || '');
+        this.filters = columns.reduce((values, col) => {
+            values[col.name] = col.filter || '';
+            return values;
+        }, {});
         this.render();
     }
 
     /**
      * Set a filter value and re-render.
-     * @param {number} idx - Filter index.
+    * @param {string} columnName - Column name.
      * @param {string} value - Filter value.
      */
-    setFilter(idx, value) {
-        this.filters[idx] = value;
+    setFilter(columnName, value) {
+        this.filters[columnName] = value;
         if (this.onFiltersChange) this.onFiltersChange(this.filters);
         this.render();
     }
@@ -153,15 +159,16 @@ class ListRenderer {
         // filter data only if any filters defined
         let filtered = this.sorted;
 
-        if (!this.filters.every(value => value === undefined || value === '')) {
+        if (!Object.values(this.filters).every(value => value === undefined || value === '')) {
             filtered = filtered.filter(item => {
-                return this.columns.every((col, idx) => {
+                return this.columns.every(col => {
+                    const filter = this.filters[col.name];
                     return (
-                        (this.filters[idx] === undefined || this.filters[idx].length === 0) ||
+                        (filter === undefined || filter.length === 0) ||
                         (
                             (item[col.name] !== undefined)
                             &&
-                            (String(item[col.name]).toLowerCase().includes(this.filters[idx]))
+                            (String(item[col.name]).toLowerCase().includes(filter))
                         )
                     );
                 });
@@ -208,11 +215,11 @@ class ListRenderer {
             if (col.filter !== undefined) {
                 const input = document.createElement('input');
                 input.type = 'text';
-                input.value = this.filters[colIdx] || '';
+                input.value = this.filters[col.name] || '';
                 input.placeholder = '';
                 input.onchange = (e) => {
                     e.target.value = e.target.value.trim().toLowerCase();
-                    this.setFilter(colIdx, e.target.value);
+                    this.setFilter(col.name, e.target.value);
                 };
                 th.appendChild(input);
             }
@@ -296,7 +303,7 @@ class ListRenderer {
             }
             p = (r+l)>>1;
         };
-        this.setFilter(this.columns.map(i=>i.name).indexOf("release_id"), releases[l]);
+        this.setFilter("release_id", releases[l]);
     }
 
     /**
