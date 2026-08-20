@@ -21,7 +21,6 @@ const Page = {
         this.appState = appState || this.appState;
         appState = this.appState;
         this.renderer = null;
-        debugger;
         Page.normalise();
     },
 
