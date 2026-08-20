@@ -66,7 +66,7 @@ const Page = {
             compact: true,
             filters: Page.listFilters,
             onFiltersChange: (filters) => {
-                Page.listFilters = filters.slice();
+                Page.listFilters = {...filters};
             },
             onRowClick: (row, target) => {
                 let clicker = target.querySelector(".clicker span");
