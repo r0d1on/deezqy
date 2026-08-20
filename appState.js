@@ -11,6 +11,8 @@
  * @property {Object} collection - Normalized collection data
  * @property {string} token - Discogs API token
  * @property {string} username - Discogs username
+ * @property {string} tmdb_token - TMDB API token
+ * @property {string} tmdb_username - TMDB username
  * @property {string} matchingType - Track matching mode
  * @property {Object} ui - UI state (activeMenu, activeSubmenu, etc.)
  * @property {number} score - Currently filtered collection uniqueness score
@@ -19,6 +21,7 @@
 
 const appState = {
   API: null,
+  TMDB: null,
   Cookie: null,
   DB: null,
   Pages: {},

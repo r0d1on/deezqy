@@ -4,10 +4,12 @@ import {Page as PageSetup} from './pages/Setup.js';
 import {Page as PageCollection} from './pages/Collection.js';
 import {Page as PageWanted} from './pages/Wanted.js';
 import {Page as PageSearch} from './pages/Search.js';
+import {Page as PageDVD} from './pages/DVD.js';
 import {Page as PageAnalytics} from './pages/Analytics.js';
 import {Page as PageHelp} from './pages/Help.js';
 
 import {API} from './api/discogs.js';
+import {API as TMDB} from './api/tmdb.js';
 import {Cookie} from './api/cookie.js';
 import {DB} from './api/db.js';
 
@@ -17,6 +19,7 @@ const menuItems = [
     { name: 'Setup', page: PageSetup},
     { name: 'Collection',  page: PageCollection},
     { name: 'Wanted',  page: PageWanted},
+    { name: 'DVD',  page: PageDVD},
     { name: 'Search',  page: PageSearch},
     { name: 'Analytics', page: PageAnalytics},
     { name: 'Help', page: PageHelp}
@@ -47,7 +50,7 @@ appState.hideOverlay = function() {
     if (overlay) overlay.style.display = 'none';
 };
 
-appState.progress =  function(stage, stages, name) {
+appState.progress =  function(name, stage, stages) {
     function idle() {
         progressSection.innerHTML = 'Idle';
         if (appState.data) {
@@ -57,42 +60,51 @@ appState.progress =  function(stage, stages, name) {
         };
     };
 
+    this._stages = this._stages||{};
+
     const progressSection = document.getElementById('footer-progress');
     if (!progressSection) return;
 
-    if (stage < 0) {
-        idle();
-        return;
+    if (name < 0)
+        return idle();
+
+    let tracker = null;
+    if (!(name in this._stages)) {
+        if (stages === undefined)
+            throw "total stages must be defined"
+        this._stages[name] = {
+            stage: stage||0,
+            stages: stages,
+            name: name
+        }
     };
 
-    if (((stage===undefined)&&(stages===undefined)&&(name===undefined))||(stage > stages)) {
-        this._stage = undefined;
-        this._stages = undefined;
-        this._name = undefined;
-        idle();
-        return;
-    }
+    tracker = this._stages[name];
 
-    if ((stages !== undefined)&&(name !== undefined)) {
-        this._stages = stages;
-        this._name = name;
-    }
+    if (stages !== undefined)
+        tracker.stages = stages;
 
-    if (stage !== undefined) {
-        this._stage = stage;
-    }
+    if (stage !== undefined)
+        tracker.stage = ((stage > 0) ? stage : (tracker.stage - stage));
+    else
+        tracker.stage = tracker.stages;
 
-    stage = stage||this._stage;
-    stages = stages||this._stages;
-    name = name||this._name;
+    tracker.progress = tracker.stage / tracker.stages;
 
-    const percent = Math.round(Math.min(1.0, stage / stages) * 100);
-    progressSection.innerHTML = `<span>${name}</span> <div class='progress-bar'><div class='progress-bar-fill' style='width:${percent}%;'></div></div> <span>${percent}%</span>`;
+    const percent = Math.round(Math.min(1.0, tracker.progress) * 100);
+    progressSection.innerHTML = `<span>${tracker.name}</span> <div class='progress-bar'><div class='progress-bar-fill' style='width:${percent}%;'></div></div> <span>${percent}%</span>`;
+    
+    if (tracker.progress >= 1.0)
+        return idle();
 }
 
 appState.restore_settings = async function() {
     appState.token = appState.Cookie.get("token")||"";
     appState.username = appState.Cookie.get("username")||"";
+
+    appState.tmdb_token = appState.Cookie.get("tmdb_token")||"";
+    appState.tmdb_username = appState.Cookie.get("tmdb_username")||"";
+    appState.tmdb_session = appState.Cookie.get("tmdb_session")||"";
 }
 
 appState.save_db = async function() {
@@ -102,7 +114,10 @@ appState.save_db = async function() {
         appState.DB.set(appState.username + ".folders", appState.data.folders),
         appState.DB.set(appState.username + ".releases", appState.data.releases),
         appState.DB.set(appState.username + ".wanted", appState.data.wanted),
-        appState.DB.set(appState.username + ".release_details", appState.data.release_details)
+        appState.DB.set(appState.username + ".release_details", appState.data.release_details),
+
+        appState.DB.set(appState.tmdb_username + ".dvd_folders", appState.data.dvd_folders),
+        appState.DB.set(appState.tmdb_username + ".dvd_items", appState.data.dvd_items),
     ])
 }
 
@@ -122,26 +137,36 @@ appState.restore_db = async function() {
     appState.data.wanted = {};
     appState.data.release_details = {};
 
+    appState.data.dvd_folders = {};
+    appState.data.dvd_items = {};
+
     if (appState.username) {
-        appState.progress(0, 1, "Restoring user's cached data");
+        appState.progress("Restoring user's cached data", 0, 1);
         return Promise.all([
             appState.DB.get(appState.username),
             appState.DB.get(appState.username + ".folders"),
             appState.DB.get(appState.username + ".releases"),
             appState.DB.get(appState.username + ".wanted"),
-            appState.DB.get(appState.username + ".release_details")
+            appState.DB.get(appState.username + ".release_details"),
+            appState.DB.get(appState.tmdb_username + ".dvd_folders"),
+            appState.DB.get(appState.tmdb_username + ".dvd_items")          
         ]).then(([
             timestamp,
             folders,
             releases,
             wanted,
-            details
+            details,
+            dvd_folders,
+            dvd_items
         ])=>{
             appState.data['timestamp'] = timestamp * 1;
             appState.data.folders = folders || [];
             appState.data.releases = releases || [];
             appState.data.wanted = wanted || [];
             appState.data.release_details = details || [];
+
+            appState.data.dvd_folders = dvd_folders || [];
+            appState.data.dvd_items = dvd_items || [];
 
             if (Array.isArray(appState.data.folders))
                 appState.data.folders = appState.make_index(appState.data.folders);
@@ -155,7 +180,13 @@ appState.restore_db = async function() {
             if (Array.isArray(appState.data.release_details))
                 appState.data.release_details = appState.make_index(appState.data.release_details);
 
-            appState.progress();
+            if (Array.isArray(appState.data.dvd_folders))
+                appState.data.dvd_folders = appState.make_index(appState.data.dvd_folders);
+
+            if (Array.isArray(appState.data.dvd_items))
+                appState.data.dvd_items = appState.make_index(appState.data.dvd_items);
+
+            appState.progress("Restoring user's cached data", 1);
             return new Promise((r, c)=>{r()})
         });
     };
@@ -165,6 +196,7 @@ appState.init = async function() {
     appState.showOverlay();
 
     appState.API = API.init(appState);
+    appState.TMDB = TMDB.init(appState);
     appState.Cookie = Cookie.init(appState);
     appState.DB = DB.init(appState, false);
 

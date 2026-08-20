@@ -1,10 +1,10 @@
 # Deezqy: Discogs Collection Analytics
 
-Deezqy is a lightweight, browser-based tool for analyzing and managing your Discogs music collection. It provides a sortable and filterable table view, local caching, a uniqueness score for each release, and advanced search and track matching features. The app is built as a single-page application using vanilla JavaScript, HTML, and CSS.
+Deezqy is a lightweight, browser-based tool for analyzing and managing personal media  collection (powered by Discogs and TMBD). It provides a sortable and filterable table view, local caching, a uniqueness score for each release, and advanced search and track matching features. The app is built as a single-page application using vanilla JavaScript, HTML, and CSS.
 
 ## Features
 
-- **Setup Page**: Enter your Discogs private token and test credentials to automatically retrieve your username, or enter a username to access public releases. Choose your preferred track matching mode ("author & title" or "title only").
+- **Setup Page**: Enter your Discogs and / or TMDB private tokens and test credentials to automatically retrieve your username, or enter a username to access public releases. Choose your preferred track matching mode ("author & title" or "title only").
 - **Collection Page**: Load and update your collection, which is cached locally for fast access. The collection is displayed as a sortable and filterable table. Track uniqueness is calculated based on your selected matching mode.
 - **Advanced Search Page**: Search Discogs releases by multiple parameters (title, artist, track, country, format, barcode). Results are shown in a table with sorting and filtering. You can match search results against your collection to see which releases you already have or want.
 - **Table View**: Sort and filter any column. Sorting is toggled by clicking column headers, with visual indicators for sort direction. Filter inputs are available under each column name.
