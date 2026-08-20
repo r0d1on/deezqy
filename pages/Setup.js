@@ -41,6 +41,40 @@ const Page = {
         ));
 
         parent.appendChild(settingsContainer);
+
+        if (window.location.href.endsWith("&approved=true")) {
+            if (this.appState.tmdb_session.startsWith("R::")) {
+                this.appState.TMDB.call(
+                    "https://api.themoviedb.org/3/authentication/session/new", 
+                    "POST", { "request_token": this.appState.tmdb_session.replace("R::", "") }
+                ).then(data => {
+                    uiFeedback.showStatus("Created user session : " + data.session_id);
+                    this.tmdb_session_input.value = data.session_id;
+                    this.tmdb_session_input.onchange({target:this.tmdb_session_input});
+                    this.appState.progress(-1);
+                    setTimeout(()=>{
+                        window.location.href = window.location.origin + "/";
+                    }, 700);
+                });
+            } else {
+                this.tmdb_session_input.value = "";
+                this.tmdb_session_input.onchange({target:this.tmdb_session_input});
+                this.tmdb_username_input.value = "";
+                this.tmdb_username_input.onchange({target:this.tmdb_username_input});
+                setTimeout(()=>{
+                    window.location.href = window.location.origin + "/";
+                }, 700);
+            }
+        } else if (this.appState.tmdb_session !="") {
+            this.appState.TMDB.call(
+                "https://api.themoviedb.org/3/account", 
+                "GET", {"session_id": this.appState.tmdb_session}
+            ).then(data => {
+                uiFeedback.showStatus("Authorised on TMDB as: " + data.username);
+                this.tmdb_username_input.value = data.username + ":" + data.id;
+                this.tmdb_username_input.onchange({target:this.tmdb_username_input});
+            });
+        };
     },
 
     renderCredentialsGroup: function() {
@@ -48,7 +82,7 @@ const Page = {
         credentialsGroup.className = "settings-group credentials-group";
         const creds = [
             {
-                label: "Discogs access token:",
+                label: "Discogs token:",
                 placeholder: "discogs personal access token",
                 value: this.appState.token || "",
                 onChange: (e) => {
@@ -58,13 +92,42 @@ const Page = {
             },
             {
                 id: "username_input",
-                label: "User name:",
+                label: "Discogs user name:",
                 placeholder: "",
                 value: this.appState.username || "",
                 onChange: (e) => {
                     this.appState.username = e.target.value;
                     this.appState.Cookie.set("username", e.target.value);
                     this.appState.Pages.Collection.init();
+                }
+            },
+            {
+                label: "TMDB token:",
+                placeholder: "TMDB read access token",
+                value: this.appState.tmdb_token || "",
+                onChange: (e) => {
+                    this.appState.tmdb_token = e.target.value;
+                    this.appState.Cookie.set("tmdb_token", e.target.value);
+                }
+            },
+            {
+                id: "tmdb_session_input",
+                label: "TMDB user session:",
+                placeholder: "TMDB session id",
+                value: this.appState.tmdb_session || "",
+                onChange: (e) => {
+                    this.appState.tmdb_session = e.target.value;
+                    this.appState.Cookie.set("tmdb_session", e.target.value);
+                }
+            },
+            {
+                id: "tmdb_username_input",
+                label: "TMDB user name:",
+                placeholder: "",
+                value: this.appState.tmdb_username || "",
+                onChange: (e) => {
+                    this.appState.tmdb_username = e.target.value;
+                    this.appState.Cookie.set("tmdb_username", e.target.value);
                 }
             }
         ];
@@ -82,36 +145,62 @@ const Page = {
             credentialsGroup.appendChild(input);
             if (c.id) this[c.id] = input;
         });
+
         let button = document.createElement("button");
-        button.innerText = "Test credentials";
+        button.innerText = "Test Discogs credentials";
         button.className = "settings-button";
         button.onclick = (e) => {
             if ((this.appState.token)&&(!this.appState.username)) {
-                this.appState.progress(0,1,"Testing access token");
+                this.appState.progress("Testing access token", 0, 1);
                 this.appState.API.call(
                     "https://api.discogs.com/oauth/identity"
                 ).then(data => {
                     this.username_input.value = data.username;
                     this.username_input.onchange({target:this.username_input});
-                    this.appState.progress();
+                    this.appState.progress("Testing access token");
                 });
             } else if (this.appState.username) {
                 this.appState.API.call(
                     `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
                     ,(stage, stages) => {
-                        this.appState.progress(stage, stages, "Testing username");
+                        this.appState.progress("Testing Discogs username", stage, stages);
                     }                    
                 ).then(data => {
                     const items = (data.pagination && data.pagination.items) || data.releases.length;
-                    this.appState.progress();
-                    uiFeedback.showStatus(`Username is valid, total items in collection = ${items}`, 'success');
+                    this.appState.progress("Testing Discogs username");
+                    uiFeedback.showStatus(`Discogs username is valid, total items in collection = ${items}`, 'success');
                 });
             } else {
-                uiFeedback.showStatus("Specify access token or username at least", "warning");
+                uiFeedback.showStatus("Specify Discogs access token or username at least", "warning");
             };
             // uiFeedback.showStatus('Testing credentials', 'success');
         };
         credentialsGroup.appendChild(button);
+
+        button = document.createElement("button");
+        button.innerText = "Authenticate on TMDB";
+        button.className = "settings-button";
+        button.onclick = (e) => {
+            if (this.appState.tmdb_token) {
+                this.appState.progress("Requesting new user token", 0, 1);
+                this.appState.TMDB.call(
+                    "https://api.themoviedb.org/3/authentication/token/new", "GET"
+                ).then(data => {
+                    uiFeedback.showStatus("user token expires " + data.expires_at, "warning");
+                    this.tmdb_session_input.value = `R::${data.request_token}`;
+                    this.tmdb_session_input.onchange({target:this.tmdb_session_input});
+                    this.appState.progress("Requesting new user token");
+                    setTimeout(()=>{
+                        window.location.href = `https://www.themoviedb.org/authenticate/${data.request_token}?redirect_to=${window.location.href}`;
+                    },500)
+                });
+            } else {
+                uiFeedback.showStatus("Specify TMDB app token", "warning");
+            };
+            // uiFeedback.showStatus('Testing credentials', 'success');
+        };
+        credentialsGroup.appendChild(button);
+
         return credentialsGroup;
     },
 

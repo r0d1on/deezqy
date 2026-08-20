@@ -40,7 +40,7 @@ const Page = {
         this.appState.API.call(
             `https://api.discogs.com/users/${this.appState.username}/wants`
             ,(stage, stages)=>{
-                this.appState.progress(stage, stages, "Loading wanted list");
+                this.appState.progress("Loading wanted list", stage, stages);
             }
         ).then((data)=>{
             this.appState.data.wanted = Page.appState.make_index(data.wants);

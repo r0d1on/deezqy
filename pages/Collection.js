@@ -181,7 +181,7 @@ const Page = {
         });
 
         // Extract and normalize all tracks for all releases, cross-reference links between tracks and releases
-        this.appState.progress(0, Object.keys(this.appState.collection[folder]).length, `Normalising the collection [${folder}]`);
+        this.appState.progress(`Normalising the collection [${folder}]`, 0, Object.keys(this.appState.collection[folder]).length);
         this.appState.collection[list] = [];
 
         let i = 0;
@@ -189,7 +189,7 @@ const Page = {
             let src = Page.appState.collection[folder];
             let r_ids = Object.keys(src);
             if (i < r_ids.length) {
-                Page.appState.progress(i);
+                Page.appState.progress(`Normalising the collection [${folder}]`, i);
                 let release_id = r_ids[i];
                 let release = src[release_id];
                 let format = release.basic_information.formats.map(e=>e.name).join("|")
@@ -267,7 +267,7 @@ const Page = {
                 };
                 appState.Pages.Collection.renderer = null;
                 appState.Pages.Wanted.renderer = null;
-                Page.appState.progress();
+                Page.appState.progress(`Normalising the collection [${folder}]`);
                 Page._working = false;
                 uiFeedback.showStatus(`${folder} list loaded`, 'success');
             };
@@ -311,7 +311,7 @@ const Page = {
         if (deleted.size||needed.size)
             alert(`Pending updates: new = ${needed.size} , deleted = ${deleted.size}`);
 
-        Page.appState.progress(0, needed.size, "Loading release details");
+        Page.appState.progress("Loading release details", 0, needed.size);
 
         Page.appState._needed = Array.from(needed);
 
@@ -322,7 +322,7 @@ const Page = {
                 `https://api.discogs.com/releases/${release_id}`
             ).then(data => {
                 Page.appState.data.release_details[data.id] = data;
-                Page.appState.progress(ix);
+                Page.appState.progress("Loading release details", -1);
                 if (Page.appState._needed.length) {
                     setTimeout(()=>{getter(resolve)}, 800);
                 } else {
@@ -348,7 +348,7 @@ const Page = {
         this.appState.API.call(
             `https://api.discogs.com/users/${this.appState.username}/collection/folders`
             ,(stage, stages)=>{
-                this.appState.progress(stage, stages, "Loading folders");
+                this.appState.progress("Loading folders", stage, stages);
             }
         )
         .then((v)=>{return new Promise((r,d)=>{setTimeout(()=>{r(v)}, 1000)})})
@@ -357,7 +357,7 @@ const Page = {
             return this.appState.API.call(
                 `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
                 ,(stage, stages)=>{
-                    this.appState.progress(stage, stages, "Loading releases");
+                    this.appState.progress("Loading folders", stage, stages);
                 }
             )
         })

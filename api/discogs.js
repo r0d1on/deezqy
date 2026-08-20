@@ -29,7 +29,7 @@ let API = {
         return fetch(url + (page?`?page=${page}`:""), {
             method : 'get',
             headers : {
-                "Authorization" : `Discogs token=${token}` // pageLoad.App.
+                "Authorization" : `Discogs token=${token}`
             },
 
         }).then(r => {
@@ -38,6 +38,7 @@ let API = {
             return r.json();
 
         }).then(data => {
+            console.log("Discogs data:", data);
             if ((data.pagination) && (page!==null) && (data.pagination.page < data.pagination.pages)) {
                 (progress)&&(progress(data.pagination.page, data.pagination.pages));
                 return API.call(
@@ -60,7 +61,7 @@ let API = {
         }).catch(function (error) {
             console.log('API call failed for url', url, 'Error:', error);
             if ((errors||0) < 3) {
-                API.App.progress(undefined , undefined, "Too many requests, cooling down");
+                API.App.progress("Too many requests, cooling down", 1 , 1);
                 console.log("Retrying in 30 seconds");
                 return (new Promise((r, d)=>{setTimeout(()=>{r()},1000*30)})).then(()=>{
                     return API.call(url, progress, page, (errors||0) + 1);
