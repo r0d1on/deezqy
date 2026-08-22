@@ -127,7 +127,7 @@ class ListRenderer {
      * Get filtered and sorted data.
      * @returns {Array} Filtered and sorted data.
      */
-    getFilteredSortedData() {
+    getFilteredSortedData(skip_update) {
         this.sorted = this.data || [];
 
         let sel_filtered_cols = Object.keys(this.filters).filter((col)=>{
@@ -148,7 +148,7 @@ class ListRenderer {
             this.filters[col].cached = Object.keys(this.filters[col].cached);
         });        
 
-        if (sel_filtered_cols.length)
+        if ((sel_filtered_cols.length)&&(!!!skip_update))
             this.onFiltersChange();
 
         // sort dataset if needed
@@ -329,7 +329,7 @@ class ListRenderer {
     }
 
     random() {
-        const filteredSorted = this.getFilteredSortedData();
+        const filteredSorted = this.getFilteredSortedData(true);
         let ids = Array.from(Object.keys(filteredSorted.reduce((acc , i)=>{
             acc[i.release_id] = true;
             return acc;
@@ -349,7 +349,7 @@ class ListRenderer {
         this.parent = parent;
         parent.innerHTML = '';
 
-        this._filteredSorted = this.getFilteredSortedData();
+        this._filteredSorted = this.getFilteredSortedData(parent.fake);
 
         const table = document.createElement('table');
         table.className = 'collection-table';
