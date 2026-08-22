@@ -31,20 +31,26 @@ const Page = {
 
         {name: "release_score", path: "film.vote_average", render:false},
 
+        {name: "raw_folder", path: (row, ctx)=>{
+                return Object.keys(ctx.film.folders).map((folder_id)=>{
+                    return ctx.folders[folder_id].name;
+                }).join(";")
+            }, render:false},
+
         {name: "folder", path: (row, ctx)=>{
                 return Object.keys(ctx.film.folders).map((folder_id)=>{
                     const folder_name = ctx.folders[folder_id].name;
                     return `<a href="https://www.themoviedb.org/list/${folder_id}-${folder_name}">${folder_name}<a/>`
                 }).join("; ")
-            }, filter:"", sortable:true, maxwidth:"80px"},
+            }, filter:"<>", filter_source:"raw_folder", sortable:true, maxwidth:"80px"},
 
         {name: "release_id", path: "film.id", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
             return `<a href="https://www.themoviedb.org/${row['film_format']}/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
         }},
 
-        {name: "film_format", sortable:true, filter:"", path: (row, ctx)=>{
+        {name: "film_format", sortable:true, filter:"<>", path: (row, ctx)=>{
             return row.film.media_type;
-        }, maxwidth:"60px", extended:false},
+        }, maxwidth:"70px", extended:false},
 
         {name: "film_poster", path: "film.poster_path", maxwidth:"85px", render: (row)=>{
             return `<img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_poster']]}"/>`
@@ -71,9 +77,7 @@ const Page = {
 
         //{name: "track_id", path: "track.id", filter:""},
         {name: "film_genres", path: "film.genres", filter:"", maxwidth:"150px"},
-        {name: "film_mark", path: ()=>0, filter:"", maxwidth:"40px", render: (row)=>{
-            return row.film_mark == 1 ? '<span style="color:green;">✓</span>' : '';
-        }},
+        {name: "film_mark", path: ()=>'⬜', filter:"<>", maxwidth:"40px"},
     ],
 
     getColumns : function() {
@@ -246,7 +250,7 @@ const Page = {
         this.renderer = this.renderer || new ListRenderer({
             data: this.appState.films.list,
             columns: Page.appState.Pages.DVD.getColumns(),
-            compact: true,
+            compact: false,
             filters: Page.listFilters,
             sort: Page.listSort,
 
@@ -255,18 +259,11 @@ const Page = {
                 Page.listSort = sortby;
             },
             onRowClick: (row, target) => {
-                row.film_mark = 1 - row.film_mark;
-                ///Page.appState.data.dvd_items[row.id].film_seen = 1;
-                ///target.lastElementChild.innerHTML = Page.LIST[Page.LIST.length - 1].render(row);
-                let clicker = target.querySelector(".clicker span");
-                (clicker)&&(clicker.switch({target:clicker}));
-                //this.appState.renderContent();
+                row.film_mark = row.film_mark == '⬜' ? '🟩' : '⬜'; // 🟥
+                (appState.Pages.DVD.renderer)&&(appState.Pages.DVD.renderer.filters.film_mark.cached=undefined);
                 Page.render(Page._last_parent);
             },
             onRowDblCLick: function(row, target) {
-                let clicker = target.querySelector(".clicker span");
-                if (clicker==null)
-                    return;
             },
             onScore: (score, rows)=>{
                 Page.appState.score = score;

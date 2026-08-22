@@ -11,7 +11,7 @@ class ListRenderer {
      * @param {Array} options.columns - Column definitions.
      * @param {function} [options.onRowClick] - Row click handler.
      * @param {boolean} [options.compact] - Compact mode.
-    * @param {object} [options.filters] - Initial filter values keyed by column name.
+     * @param {object} [options.filters] - Initial filter values keyed by column name.
      * @param {Array} [options.sort] - Initial sort column and order.
      * @param {function} [options.onFiltersChange] - Filters change handler.
      * @param {function} [options.onScore] - Score handler.
@@ -26,10 +26,20 @@ class ListRenderer {
         this.onScore = onScore;
         this.onRowDblCLick = onRowDblCLick;
         // Normalize filters by column name, including filters saved by older versions.
-        this.filters = columns.reduce((values, col, idx) => {
-            values[col.name] = Array.isArray(filters) ? filters[idx] : (filters?.[col.name] ?? col.filter ?? '');
-            return values;
+        this.filters = columns.reduce((f, col, idx) => {
+            f[col.name] = filters?.[col.name] ?? {};
+            f[col.name].value = f[col.name].value ?? col.filter ?? ''
+            f[col.name].type = "str";
+            f[col.name].src = col.filter_source;
+            if (f[col.name].value.startsWith("<") && f[col.name].value.endsWith(">"))
+                f[col.name].type = "sel";
+            if (f[col.name].value=="~") {
+                f[col.name].type = "tri";
+                f[col.name].value = "";
+            }
+            return f;
         }, {});
+
         this.onFiltersChange = onFiltersChange;
         this.sortedBy = (sort===undefined) ? null:Math.abs(sort);
         this.sortedOrder = (sort===undefined) ? 1:Math.sign(sort);
@@ -64,34 +74,12 @@ class ListRenderer {
     }
 
     /**
-     * Set new data and re-render.
-     * @param {Array} data - New data array.
-     */
-    setData(data) {
-        this.data = data;
-        this.render();
-    }
-
-    /**
-     * Set new columns and re-render.
-     * @param {Array} columns - New columns array.
-     */
-    setColumns(columns) {
-        this.columns = columns;
-        this.filters = columns.reduce((values, col) => {
-            values[col.name] = col.filter || '';
-            return values;
-        }, {});
-        this.render();
-    }
-
-    /**
      * Set a filter value and re-render.
     * @param {string} columnName - Column name.
      * @param {string} value - Filter value.
      */
     setFilter(columnName, value) {
-        this.filters[columnName] = value;
+        this.filters[columnName].value = value;
         if (this.onFiltersChange) this.onFiltersChange(this.filters);
         this.render();
     }
@@ -142,7 +130,26 @@ class ListRenderer {
     getFilteredSortedData() {
         this.sorted = this.data || [];
 
-        this.sorted.forEach(row=>{this.precalc(row)});
+        let sel_filtered_cols = Object.keys(this.filters).filter((col)=>{
+            return (this.filters[col].type=="sel")&&(this.filters[col].cached===undefined)
+        });
+        sel_filtered_cols.map((col)=>{
+            this.filters[col].cached = {"":true};
+        });        
+        
+        this.sorted.forEach(row=>{
+            this.precalc(row);
+            sel_filtered_cols.map((col)=>{
+                this.filters[col].cached[row[this.filters[col].src ?? col]] = true;
+            });
+        });
+
+        sel_filtered_cols.map((col)=>{
+            this.filters[col].cached = Object.keys(this.filters[col].cached);
+        });        
+
+        if (sel_filtered_cols.length)
+            this.onFiltersChange();
 
         // sort dataset if needed
         let sort_code = `${this.sortedBy}:${this.sortedOrder}`;
@@ -159,16 +166,21 @@ class ListRenderer {
         // filter data only if any filters defined
         let filtered = this.sorted;
 
-        if (!Object.values(this.filters).every(value => value === undefined || value === '')) {
+        if (!Object.values(this.filters).every(f => f.value === undefined || f.value === '' || f.value === '<>')) {
             filtered = filtered.filter(item => {
                 return this.columns.every(col => {
-                    const filter = this.filters[col.name];
+                    let f = this.filters[col.name];
+                    let v = f.value;
+
+                    if (f.type=="sel")
+                        v = v.slice(1,-1);
+
                     return (
-                        (filter === undefined || filter.length === 0) ||
+                        (v === undefined || v.length === 0) ||
                         (
                             (item[col.name] !== undefined)
                             &&
-                            (String(item[col.name]).toLowerCase().includes(filter))
+                            (String(item[col.name]).toLowerCase().includes(v))
                         )
                     );
                 });
@@ -213,13 +225,45 @@ class ListRenderer {
 
             th.appendChild(span);
             if (col.filter !== undefined) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.value = this.filters[col.name] || '';
-                input.placeholder = '';
-                input.onchange = (e) => {
-                    e.target.value = e.target.value.trim().toLowerCase();
-                    this.setFilter(col.name, e.target.value);
+                const f = this.filters[col.name];
+                let input = null;
+                if (f.type=="sel") {
+                    input = document.createElement('select');
+                    f.cached.forEach(value => {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = value;
+                        option.selected = value === f.value.slice(1, -1);
+                        input.appendChild(option);
+                    });
+                    input.onchange = (e) => {
+                        this.setFilter(col.name, `<${e.target.value}>`);
+                    };
+                } else if (f.type=="tri") {
+                    input = document.createElement('select');
+                    [
+                        ["1", "🟩"],
+                        ["0", "🟥"],
+                        ["", "⬜"]
+                    ].forEach(([value, label]) => {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = label;
+                        option.selected = value === f.value;
+                        input.appendChild(option);
+                    });
+                    input.onchange = (e) => {
+                        this.setFilter(col.name, e.target.value);
+                    };
+                } else if (f.type=="str") {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = f.value || '';
+                    input.placeholder = '';
+                    input.onchange = (e) => {
+                        e.target.value = e.target.value.trim().toLowerCase();
+                        this.setFilter(col.name, e.target.value);
+                    };
                 };
                 th.appendChild(input);
             }
@@ -284,14 +328,14 @@ class ListRenderer {
 
     random() {
         const filteredSorted = this.getFilteredSortedData();
-        let releases = filteredSorted.reduce((p , c)=>{
-            if (!(c.release_id in p[1])) {
-                p[1][c.release_id] = true;
-                p[0].push(c.release_id);
-            };
-            return p;
-        }, [[],{}])[0];
+        let releases = filteredSorted.reduce((acc , c)=>{
+            acc[c.release_id] = true;
+            return acc;
+        }, {});
+        releases = Array.from(Object.keys(releases));
 
+        let l = Math.floor(Math.random()*releases.length);
+        /*
         let l = 0;
         let r = releases.length;
         let p = (r-l)>>1;
@@ -303,7 +347,10 @@ class ListRenderer {
             }
             p = (r+l)>>1;
         };
+        */
+
         this.setFilter("release_id", releases[l]);
+        return;
     }
 
     /**
@@ -315,11 +362,13 @@ class ListRenderer {
             return;
         this.parent = parent;
         parent.innerHTML = '';
+
+        this._filteredSorted = this.getFilteredSortedData();
+
         const table = document.createElement('table');
         table.className = 'collection-table';
         this.createTableHeaders(table);
 
-        this._filteredSorted = this.getFilteredSortedData();
         if (parent.fake)
             return;
 
