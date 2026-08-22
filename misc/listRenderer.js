@@ -173,7 +173,7 @@ class ListRenderer {
                     let v = f.value;
 
                     if (f.type=="sel")
-                        v = v.slice(1,-1);
+                        v = v.slice(1,-1).toLowerCase();
 
                     return (
                         (v === undefined || v.length === 0) ||
@@ -229,6 +229,8 @@ class ListRenderer {
                 let input = null;
                 if (f.type=="sel") {
                     input = document.createElement('select');
+                    input.style["max-width"] = "100%";
+                    input.style["min-width"] = "80%";
                     f.cached.forEach(value => {
                         const option = document.createElement('option');
                         option.value = value;
@@ -328,28 +330,12 @@ class ListRenderer {
 
     random() {
         const filteredSorted = this.getFilteredSortedData();
-        let releases = filteredSorted.reduce((acc , c)=>{
-            acc[c.release_id] = true;
+        let ids = Array.from(Object.keys(filteredSorted.reduce((acc , i)=>{
+            acc[i.release_id] = true;
             return acc;
-        }, {});
-        releases = Array.from(Object.keys(releases));
+        }, {})));
 
-        let l = Math.floor(Math.random()*releases.length);
-        /*
-        let l = 0;
-        let r = releases.length;
-        let p = (r-l)>>1;
-        while(l < r-1) {
-            if (Math.random() > 0.5) {
-                r=p;
-            } else {
-                l=p;
-            }
-            p = (r+l)>>1;
-        };
-        */
-
-        this.setFilter("release_id", releases[l]);
+        this.setFilter("release_id", ids[Math.floor(Math.random()*ids.length)]);
         return;
     }
 
