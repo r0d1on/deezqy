@@ -28,7 +28,7 @@ const Page = {
         {name: "release", path: "release", render:false},
         {name: "track", path: "track", render:false},
 
-        {name: "release_folder", path: "folder.name", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
+        {name: "release_folder", path: "folder.name", filter:"<>", sortable:true, maxwidth:"90px", render: (row)=>{
             return row['release_folder'].toLowerCase().replace("uncategorized","*");
         }},
 
@@ -36,7 +36,7 @@ const Page = {
             return `<a href="https://www.discogs.com/release/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
         }},
 
-        {name: "release_format", path: "release.format", filter:"", maxwidth:"65px", render: (row)=>{
+        {name: "release_format", path: "release.format", filter:"<>", maxwidth:"65px", render: (row)=>{
             return row['release_format'].toLowerCase().replace("|","\n");
         }},
 
@@ -54,7 +54,7 @@ const Page = {
             return row.release.details.lowest_price||"";
         }, maxwidth:"65px", extended:true},
 
-        {name: "release_media", sortable:true, filter:"", path: (row, ctx)=>{
+        {name: "release_media", sortable:true, filter:"<>", path: (row, ctx)=>{
             let notes = (row.release.notes||[]).filter(e=>e.field_id==1);
             return (notes.length>0)?notes[0].value:"-";
         }, maxwidth:"80px", extended:true},
@@ -71,7 +71,7 @@ const Page = {
 
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
-        {name: "release_rating", path: "release.rating", filter:"", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
+        {name: "release_rating", path: "release.rating", filter:"<>", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
         {name: "release_score", sortable:true, path: (row, ctx)=>{
             // calculate release "uniqueness" - fraction of unreferenced tracks in it
             let scores = ctx.release.details.tracklist.map((track)=>{
