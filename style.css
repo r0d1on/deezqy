@@ -170,13 +170,67 @@ input,button {
 .collection-table input[type="text"] {
     display: block;
     width: 100%;
-    margin-top: 6px;
     font-size: 20px;
     padding: 4px 6px;
     border: 1px solid #ccc;
     border-radius: 4px;
     box-sizing: border-box;
 }
+.collection-table select {
+    width: 100%;
+    font-size: 20px;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.filter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.filter-clear-button {
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0.5;
+    font-size: 25px;
+}
+
+.filter-clear-button.active {
+    opacity: 1;
+    color: red;
+}
+
+.search-field-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.search-field-wrap .settings-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-clear-button {
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    opacity: 0.5;
+    font-size: 25px;
+    color: #444;
+}
+
+.search-clear-button.active {
+    opacity: 1;
+    color: #e52e71;
+}
+
 .collection-row-active  {
     background: #ff8a00 !important;
 }
@@ -254,7 +308,7 @@ input,button {
     padding: 6px 10px;
     border: 1px solid #ccc;
     border-radius: 6px;
-    margin-bottom: 8px;
+    /*margin-bottom: 8px;*/
     background: #fafafa;
     color: #444;
 }
@@ -450,6 +504,7 @@ input,button {
     text-align: center;
     opacity: 0.98;
     pointer-events: none;
+    transition: top 0.2s ease;
 }
 .app-status-bar.info {
     background: #e3f2fd;

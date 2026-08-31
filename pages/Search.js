@@ -84,13 +84,37 @@ const Page = {
                 searchBlock.appendChild(rowDiv);
                 if (idx === 0) firstRowDiv = rowDiv;
             }
+            let fieldWrap = document.createElement('div');
+            fieldWrap.className = 'search-field-wrap';
+
             let input = document.createElement('input');
             input.type = 'text';
             input.placeholder = f.placeholder;
             input.className = 'settings-input';
-            // Restore value if present
             input.value = f.value || "";
-            rowDiv.appendChild(input);
+
+            let clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'search-clear-button';
+            clearBtn.title = 'Clear field';
+            clearBtn.innerHTML = '✕';
+            clearBtn.onclick = () => {
+                input.value = '';
+                f.value = undefined;
+                clearBtn.classList.remove('active');
+                input.focus();
+            };
+
+            const updateClearBtn = () => {
+                const hasValue = String(input.value || '').trim().length > 0;
+                clearBtn.classList.toggle('active', hasValue);
+            };
+            input.addEventListener('input', updateClearBtn);
+            updateClearBtn();
+
+            fieldWrap.appendChild(input);
+            fieldWrap.appendChild(clearBtn);
+            rowDiv.appendChild(fieldWrap);
             this[f.ref] = input;
         });
         // Add search button to the last row
@@ -101,17 +125,6 @@ const Page = {
             this.search();
         };
         rowDiv.appendChild(searchBtn);
-        // Add clean button to the first row
-        let cleanBtn = document.createElement('button');
-        cleanBtn.innerText = 'Clean';
-        cleanBtn.className = 'settings-button';
-        cleanBtn.onclick = () => {
-            this.searchFields.forEach(f => {
-                f.value = undefined;
-                if (this[f.ref]) this[f.ref].value = '';
-            });
-        };
-        if (firstRowDiv) firstRowDiv.appendChild(cleanBtn);
         parent.appendChild(searchBlock);
         // Results section
         let resultsSection = document.createElement('div');

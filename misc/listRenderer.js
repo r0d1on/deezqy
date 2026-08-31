@@ -85,6 +85,28 @@ class ListRenderer {
     }
 
     /**
+     * Reset a filter to its empty value.
+     * @param {string} columnName - Column name.
+     */
+    clearFilter(columnName) {
+        const filter = this.filters[columnName];
+        if (!filter) return;
+        filter.value = this.clearFilterValue(filter.type);
+        if (this.onFiltersChange) this.onFiltersChange(this.filters);
+        this.render();
+    }
+
+    /**
+     * Convert a filter type to its empty/reset value.
+     * @param {string} filterType - Filter type.
+     * @returns {string} Empty value for that filter type.
+     */
+    clearFilterValue(filterType) {
+        if (filterType === 'sel') return '<>';
+        return '';
+    }
+
+    /**
      * Sort by a column and re-render.
      * @param {number} colIdx - Column index.
      */
@@ -229,8 +251,6 @@ class ListRenderer {
                 let input = null;
                 if (f.type=="sel") {
                     input = document.createElement('select');
-                    input.style["max-width"] = "100%";
-                    input.style["min-width"] = "80%";
                     f.cached.forEach(value => {
                         const option = document.createElement('option');
                         option.value = value;
@@ -267,7 +287,26 @@ class ListRenderer {
                         this.setFilter(col.name, e.target.value);
                     };
                 };
-                th.appendChild(input);
+
+                const filterWrap = document.createElement('div');
+                filterWrap.className = 'filter-wrap';
+                filterWrap.appendChild(input);
+
+                const clearButton = document.createElement('button');
+                clearButton.type = 'button';
+                clearButton.className = 'filter-clear-button';
+                clearButton.title = 'Clear filter';
+                clearButton.innerHTML = '✕';
+                if (f.value !== undefined && f.value !== '' && f.value !== '<>') {
+                    clearButton.classList.add('active');
+                }
+                clearButton.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.clearFilter(col.name);
+                };
+                filterWrap.appendChild(clearButton);
+                th.appendChild(filterWrap);
             }
             if (col.maxwidth)
                 th.style = `max-width:${col.maxwidth};overflow-x:auto;`;
