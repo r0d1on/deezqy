@@ -71,7 +71,7 @@ const Page = {
 
         {name: "release_artist", path: "release.details.artists_sort", filter:"", maxwidth:"150px"},
         {name: "release_title", path: "release.details.title", filter:"", maxwidth:"250px"},
-        {name: "release_rating", path: "release.rating", filter:"<>", maxwidth:"80px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
+        {name: "release_rating", sortable:true, path: "release.rating", filter:"<>", maxwidth:"85px", render: (row)=>`&gt; ${row['release_rating']} &lt;`},
         {name: "release_score", sortable:true, path: (row, ctx)=>{
             // calculate release "uniqueness" - fraction of unreferenced tracks in it
             let scores = ctx.release.details.tracklist.map((track)=>{
