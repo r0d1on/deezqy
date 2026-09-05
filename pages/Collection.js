@@ -265,8 +265,10 @@ const Page = {
                 if (appState.ui.activeMenu.name in {"Wanted":1,"Collection":1, "Analytics":1}) {
                     Page.appState.renderContent();
                 };
-                appState.Pages.Collection.renderer = null;
-                appState.Pages.Wanted.renderer = null;
+                
+                Page.renderer = null;
+                (appState.Pages.Wanted)&&(appState.Pages.Wanted.renderer = null);
+
                 Page.appState.progress(`Normalising the collection [${folder}]`);
                 Page._working = false;
                 uiFeedback.showStatus(`${folder} list loaded`, 'success');
@@ -308,7 +310,7 @@ const Page = {
             delete Page.appState.data.release_details[id];
         });
 
-        if (deleted.size||needed.size)
+        if (deleted.size || needed.size)
             alert(`Pending updates: new = ${needed.size} , deleted = ${deleted.size}`);
 
         Page.appState.progress("Loading release details", 0, needed.size);
@@ -324,7 +326,7 @@ const Page = {
                 Page.appState.data.release_details[data.id] = data;
                 Page.appState.progress("Loading release details", -1);
                 if (Page.appState._needed.length) {
-                    setTimeout(()=>{getter(resolve)}, 800);
+                    setTimeout(()=>{getter(resolve)}, 900);
                 } else {
                     Page.saveData("Tracks loaded").then(resolve);
                 }
@@ -353,11 +355,11 @@ const Page = {
         )
         .then((v)=>{return new Promise((r,d)=>{setTimeout(()=>{r(v)}, 1000)})})
         .then((data)=>{
-            this.appState.data['folders'] = Page.appState.make_index(data.folders);
+            this.appState.data.folders = Page.appState.make_index(data.folders);
             return this.appState.API.call(
                 `https://api.discogs.com/users/${this.appState.username}/collection/folders/0/releases`
                 ,(stage, stages)=>{
-                    this.appState.progress("Loading folders", stage, stages);
+                    this.appState.progress("Loading releases", stage, stages);
                 }
             )
         })

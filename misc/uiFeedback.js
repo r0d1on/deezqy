@@ -5,12 +5,15 @@
 const uiFeedback = {
     activeNotifications: [],
 
-    positionNotifications() {
+    positionNotifications(type) {
         this.activeNotifications.forEach((entry, index) => {
             if (!entry.element) return;
             entry.element.style.top = `${80 + index * 65}px`;
             entry.element.style.left = '50%';
             entry.element.style.transform = 'translateX(-50%)';
+            if ((type!=='error') & (entry.type=='error')) {
+                this.dismissNotification(entry);
+            }
         });
     },
 
@@ -45,7 +48,7 @@ const uiFeedback = {
         };
 
         this.activeNotifications.push(entry);
-        this.positionNotifications();
+        this.positionNotifications(type);
 
         if (type !== 'error') {
             entry.timeoutId = setTimeout(() => {
