@@ -1,4 +1,4 @@
 var deploy_info = {
-    version : '0.3.6'
-    ,time : '2026-08-31 17:23'
+    version : '0.3.7'
+    ,time : '2026-09-05 11:58'
 };

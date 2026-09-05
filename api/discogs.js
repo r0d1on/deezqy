@@ -34,22 +34,26 @@ let API = {
 
         }).then(r => {
             console.log("Discogs responce:", r);
-            if (!r.ok) throw new Error(`Response status: ${r.status}`);
+            if (!r.ok)
+                throw new Error(`Response status: ${r.status}`);
             return r.json();
 
         }).then(data => {
             console.log("Discogs data:", data);
+            if (errors)
+                uiFeedback.showStatus('proceeding...', 'info');
+
             if ((data.pagination) && (page!==null) && (data.pagination.page < data.pagination.pages)) {
                 (progress)&&(progress(data.pagination.page, data.pagination.pages));
                 return API.call(
                     url, progress, data.pagination.page + 1
                 ).then(v=>{
-                    return new Promise((r, d)=>{setTimeout(()=>{r(v)},100)})
+                    return new Promise((r, d)=>{setTimeout(()=>{r(v)}, 100)})
                 }).then((next)=>{
                     return new Promise((resolve, reject)=>{
                         (progress)&&(progress(data.pagination.page, data.pagination.pages));
                         resolve(union(data, next));
-                    });                        
+                    });
                 });
             } else {
                 (progress)&&(progress(1, 1));
@@ -61,13 +65,15 @@ let API = {
         }).catch(function (error) {
             console.log('API call failed for url', url, 'Error:', error);
             if ((errors||0) < 3) {
-                API.App.progress("Too many requests, cooling down", 1 , 1);
-                console.log("Retrying in 30 seconds");
-                return (new Promise((r, d)=>{setTimeout(()=>{r()},1000*30)})).then(()=>{
+                const timeout = 30 * ((errors||0) + 1);
+                uiFeedback.showError(`Too many requests, cooling down for ${timeout} seconds`);
+                return (new Promise((r, d)=>{
+                    setTimeout(()=>{r()}, timeout * 1000)
+                })).then(()=>{
                     return API.call(url, progress, page, (errors||0) + 1);
                 })
             } else {
-                uiFeedback("API request failed", "warning");
+                uiFeedback.showError("API request failed");
             };
         });
     }

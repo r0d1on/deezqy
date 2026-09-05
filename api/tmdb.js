@@ -87,13 +87,13 @@ let API = {
         }).catch(function (error) {
             console.log('API call failed for url', url, 'Error:', error);
             if ((errors||0) < 3) {
-                API.App.progress("Too many requests, cooling down", 1, 1);
+                uiFeedback.showError("Too many requests, cooling down");
                 console.log("Retrying in 30 seconds");
                 return (new Promise((r, d)=>{setTimeout(()=>{r()}, 1000*30)})).then(()=>{
                     return API.call(url, method, query, progress, page, (errors||0) + 1);
                 })
             } else {
-                uiFeedback("API request failed", "warning");
+                uiFeedback.showError("API request failed");
             };
         });
     }
