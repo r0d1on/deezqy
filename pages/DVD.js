@@ -26,9 +26,8 @@ const Page = {
 
     LIST : [
         {name: "id", path: (row, ctx)=>ctx.film.id, render:false},
-
         {name: "film", path: "film", render:false},
-
+        {name: "details", path: "details", render:false},
         {name: "release_score", path: "film.vote_average", render:false},
 
         {name: "raw_folder", path: (row, ctx)=>{
@@ -44,7 +43,7 @@ const Page = {
                 }).join("; ")
             }, filter:"<>", filter_source:"raw_folder", sortable:true, maxwidth:"80px"},
 
-        {name: "release_id", path: "film.id", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
+        {name: "release_id", path: "film.id0", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
             return `<a href="https://www.themoviedb.org/${row['film_format']}/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
         }},
 
@@ -53,11 +52,11 @@ const Page = {
         }, maxwidth:"70px", extended:false},
 
         {name: "film_poster", path: "film.poster_path", maxwidth:"85px", render: (row)=>{
-            return `<img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_poster']]}"/>`
+            return `<a href="${row.details.homepage}"><img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_poster']]}"/></a>`
         }},
 
         {name: "film_thumb", path: "film.backdrop_path", maxwidth:"85px", render: (row)=>{
-            return `<img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_thumb']]}"/>`
+            return `<a href="https://www.imdb.com/title/${row.details.imdb_id}/"><img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_thumb']]}"/></a>`
         }},
 
         {name: "film_title", sortable:true, filter:"", path: (row, ctx)=>{
@@ -70,14 +69,16 @@ const Page = {
 
         {name: "film_rating", sortable:true, path: "film.vote_average", filter:"", maxwidth:"80px"},
 
+        {name: "film_t", sortable:true, path: "details.runtime", filter:"", maxwidth:"40px"},
+
         {name: "film_notes", sortable:true, filter:"", path: (row, ctx)=>{
             let notes = (row.film.comments||[]);
             return (notes.length>0)?notes.join("<br>"):"";
         }, maxwidth:"120px", extended:false},
 
         //{name: "track_id", path: "track.id", filter:""},
-        {name: "film_genres", path: "film.genres", filter:"", maxwidth:"150px"},
-        {name: "film_mark", path: ()=>'⬜', filter:"<>", maxwidth:"40px"},
+        {name: "film_genres", path: "details.genres", filter:"", maxwidth:"150px"},
+        {name: "film_mark", path: ()=>'⬜', filter:"<>", maxwidth:"78px"},
     ],
 
     getColumns : function() {
@@ -98,6 +99,9 @@ const Page = {
         // Normalise folders
         this.appState.films.folders = structuredClone(this.appState.data.dvd_folders);
 
+        // Normalise details
+        this.appState.films.details = structuredClone(this.appState.data.dvd_details);
+
         // Extract and normalize all tracks for all releases, cross-reference links between tracks and releases
         this.appState.progress(`Normalising dvd collection`, 0, Object.keys(this.appState.data.dvd_items).length);
         this.appState.films.list = [];
@@ -113,6 +117,7 @@ const Page = {
                 // add flattened film info into dvd list
                 let context = {
                     "folders": Page.appState.films.folders,
+                    "details": Page.appState.films.details[film_id],
                     "film": src[film_id],
                 };
                 let list_item = ListRenderer.flattenItem(Page.getColumns(), context);
@@ -150,7 +155,73 @@ const Page = {
         });
     },
 
-    downloadFilms: function(userid) {
+    downloadDetails: function(update) {
+        if (update) {
+            Page.appState.data.dvd_details = Page.appState.data.dvd_details || {};
+        } else {
+            Page.appState.data.dvd_details = {};
+        };
+
+        // increment: required details
+        let details = new Set(Object.keys(Page.appState.data.dvd_details));
+        let items = new Set(Object.keys(Page.appState.data.dvd_items));
+        let deleted = details.difference(items);
+        let needed = items.difference(details);
+
+        // decrement: obsolete details
+        deleted.forEach(id=>{
+            delete Page.appState.data.dvd_details[id];
+        });
+        if (deleted.size || needed.size)
+            alert(`Pending updates: new = ${needed.size} , deleted = ${deleted.size}`);
+
+        Page.appState.progress(`Loading DVD details`, 0, needed.size);
+
+        Page.appState._needed = Array.from(needed);
+
+        let getter = (resolve) => {
+            let item = Page.appState._needed.pop();
+            item = this.appState.data.dvd_items[item];
+            let call = null;
+
+            if (item.media_type=="movie") {
+                call = Page.appState.TMDB.call(
+                `https://api.themoviedb.org/3/movie/${item.id0}`,"GET"
+                )
+            } else if (item.media_type=="tv") {
+                call = Page.appState.TMDB.call(
+                `https://api.themoviedb.org/3/tv/${item.id0}`,"GET"
+                )
+            };
+
+            call.then(r => {
+                Page.appState.progress(`Loading DVD details`,-1);
+                r.id = `${item.media_type}:${r.id}`;
+
+                r = Page.appState.data.dvd_details[r.id]||(Page.appState.data.dvd_details[r.id] = r);
+
+                r.genres = r.genres.map((g)=>{
+                    return g.name;
+                }).join(" ; ");
+
+                if (Page.appState._needed.length) {
+                    setTimeout(()=>{getter(resolve)}, 800);
+                } else {
+                    resolve();
+                }
+            });
+        }
+
+        if (Page.appState._needed.length) {
+            return new Promise((resolve, d)=>{
+                getter(resolve);
+            })
+        } else {
+            return new Promise((r,d)=>{setTimeout(()=>{r()}, 100)})
+        }
+    },
+
+    downloadFilms: function() {
         Page.appState.data.dvd_items = {};
 
         Page.appState._folders = Object.keys(this.appState.data.dvd_folders).map((k)=>{
@@ -166,16 +237,16 @@ const Page = {
                     Page.appState.progress(`Loading DVD folder ${folder.name}`, stage, stages);
                 }
             ).then(data => {
-                data.results.map((r, i)=>{
-                    if (r.id in Page.appState.data.dvd_items) {
-                        r = Page.appState.data.dvd_items[r.id]
-                    } else {
-                        Page.appState.data.dvd_items[r.id] = r;
-                    };
+                data.results.map((item, i)=>{
+                    item.id0 = item.id;
+                    item.id = `${item.media_type}:${item.id}`
+
+                    let r = Page.appState.data.dvd_items[item.id] || (Page.appState.data.dvd_items[item.id] = item);
+
                     r.folders = r.folders || {};
                     r.folders[folder.id] = r.folders[folder.id] || 1;
                     r.comments = r.comments || [];
-                    let c = data.comments[`${r.media_type}:${r.id}`];
+                    let c = data.comments[r.id];
                     if (c)
                         r.comments.push(c);
                     
@@ -188,7 +259,7 @@ const Page = {
                 if (Page.appState._folders.length) {
                     setTimeout(()=>{getter(resolve)}, 800);
                 } else {
-                    Page.saveData("Films loaded").then(resolve);
+                    resolve();
                 }
             });
         }
@@ -198,46 +269,54 @@ const Page = {
                 getter(resolve);
             })
         } else {
-            return Page.saveData();
+            return new Promise((r,d)=>{setTimeout(()=>{r()}, 100)})
         }
-
     },
 
     downloadFolders : function(userid) {
-        this.appState.TMDB.call(
+        return this.appState.TMDB.call(
             `https://api.themoviedb.org/3/account/${userid}/lists`,
             "GET", {"session_id": appState.tmdb_session, },
             (stage, stages)=>{
                 this.appState.progress("Loading DVD folders", stage, stages);
             }                
         ).then(data => {
-            console.log(data);
             this.appState.data.dvd_folders = Page.appState.make_index(data.results);
             return new Promise((r,d)=>{setTimeout(()=>{r()}, 1000)})
-        }).then(()=>{
-            return Page.downloadFilms(userid);
         });
     },
  
     downloadGenres: function() {
-        if (!this.appState.tmdb_username) {
-            uiFeedback.showStatus("DB update works only if TMDB credentials authenticated!", "warning");
-            return;
-        };
-        const userid = this.appState.tmdb_username.split(":")[1];
-
-        this.appState.TMDB.call(
+        return this.appState.TMDB.call(
             `https://api.themoviedb.org/3/genre/movie/list`,
             "GET", {"session_id": appState.tmdb_session, },
             (stage, stages)=>{
                 this.appState.progress("Loading movie genres", stage, stages);
             }                
         ).then(data => {
-            console.log(data);
             this.appState.data.dvd_genres = Page.appState.make_index(data.genres);
             return new Promise((r,d)=>{setTimeout(()=>{r()}, 1000)})
-        }).then(()=>{
+        });
+    },
+
+    downloadData: function(update) {
+        if (!this.appState.tmdb_username) {
+            uiFeedback.showStatus("DB update works only if TMDB credentials authenticated!", "warning");
+            return;
+        };
+        const userid = this.appState.tmdb_username.split(":")[1];
+
+        this.downloadGenres()
+        .then(()=>{
             return Page.downloadFolders(userid);
+        }).then(()=>{
+            return Page.downloadFilms();
+        }).then(()=>{
+            uiFeedback.showStatus("Films loaded", 'success')            
+            return Page.downloadDetails(update);
+        }).then(()=>{
+            uiFeedback.showStatus("Film details loaded", 'success')            
+            return Page.saveData("DVD data saved");
         });
     },
 
@@ -285,8 +364,14 @@ const Page = {
         let buttonReload = document.createElement("button");
         buttonReload.innerText = "Reload";
         buttonReload.className = "settings-button";
-        buttonReload.onclick = (e)=>this.downloadGenres();
+        buttonReload.onclick = (e)=>this.downloadData();
         controls.appendChild(buttonReload);
+
+        let buttonUpdate = document.createElement("button");
+        buttonUpdate.innerText = "Update";
+        buttonUpdate.className = "settings-button";
+        buttonUpdate.onclick = (e)=>this.downloadData(true);
+        controls.appendChild(buttonUpdate);
 
         parent.appendChild(controls);
         parent.appendChild(document.createElement("hr"));

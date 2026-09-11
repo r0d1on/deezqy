@@ -290,9 +290,9 @@ const Page = {
 
     downloadTracks : function(update) {
         if (update) {
-            Page.appState.data['release_details'] = Page.appState.data['release_details'] || {};
+            Page.appState.data.release_details = Page.appState.datarelease_details || {};
         } else {
-            Page.appState.data['release_details'] = {};
+            Page.appState.data.release_details = {};
         };
 
         // increment: required details
@@ -301,7 +301,6 @@ const Page = {
             new Set(Object.keys(Page.appState.data.releases))
             .union(new Set(Object.keys(Page.appState.data.wanted)))
         );
-
         let deleted = details.difference(releases);
         let needed = releases.difference(details);
 
@@ -318,7 +317,6 @@ const Page = {
         Page.appState._needed = Array.from(needed);
 
         let getter = (resolve) => {
-            let ix = Page.appState._needed.length;
             let release_id = Page.appState._needed.pop();
             Page.appState.API.call(
                 `https://api.discogs.com/releases/${release_id}`

@@ -5,7 +5,8 @@ import { Utils } from './Utils.js';
  */
 class ListRenderer {
     /**
-     * Create a ListRenderer instance.
+                if (!filterWrap.contains(input))
+                    filterWrap.appendChild(input);
      * @param {object} options - Renderer options.
      * @param {Array} options.data - Data to render.
      * @param {Array} options.columns - Column definitions.
@@ -78,10 +79,10 @@ class ListRenderer {
     * @param {string} columnName - Column name.
      * @param {string} value - Filter value.
      */
-    setFilter(columnName, value) {
+    setFilter(columnName, value, skipRender) {
         this.filters[columnName].value = value;
         if (this.onFiltersChange) this.onFiltersChange(this.filters);
-        this.render();
+        (skipRender!==undefined)||(this.render());
     }
 
     /**
@@ -200,6 +201,16 @@ class ListRenderer {
                     return (
                         (v === undefined || v.length === 0) ||
                         (
+
+                            (v.startsWith("!"))
+                            &&
+                            (item[col.name] !== undefined)
+                            &&
+                            (~String(item[col.name]).toLowerCase().includes(v.slice(1)))
+                        ) ||
+                        (
+                            (~v.startsWith("!"))
+                            &&
                             (item[col.name] !== undefined)
                             &&
                             (String(item[col.name]).toLowerCase().includes(v))
@@ -249,20 +260,36 @@ class ListRenderer {
             if (col.filter !== undefined) {
                 const f = this.filters[col.name];
                 let input = null;
+                let filterWrap = null;
+                let control = null;
                 if (f.type=="sel") {
-                    input = document.createElement('select');
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = f.value.slice(1, -1);
+                    input.placeholder = '';
+                    input.onchange = (e) => {
+                        e.target.value = e.target.value.trim().toLowerCase();
+                        this.setFilter(col.name, `<${e.target.value}>`);
+                    };
+
+                    control = document.createElement('select');
+                    control.className = 'filter-select';
                     f.cached.forEach(value => {
                         const option = document.createElement('option');
                         option.value = value;
                         option.textContent = value;
                         option.selected = value === f.value.slice(1, -1);
-                        input.appendChild(option);
+                        control.appendChild(option);
                     });
-                    input.onchange = (e) => {
+                    control.onchange = (e) => {
+                        input.value = e.target.value;
                         this.setFilter(col.name, `<${e.target.value}>`);
                     };
+
+                    filterWrap = document.createElement('div');
+                    filterWrap.appendChild(input);
                 } else if (f.type=="tri") {
-                    input = document.createElement('select');
+                    control = document.createElement('select');
                     [
                         ["1", "🟩"],
                         ["0", "🟥"],
@@ -272,25 +299,25 @@ class ListRenderer {
                         option.value = value;
                         option.textContent = label;
                         option.selected = value === f.value;
-                        input.appendChild(option);
+                        control.appendChild(option);
                     });
-                    input.onchange = (e) => {
+                    control.onchange = (e) => {
                         this.setFilter(col.name, e.target.value);
                     };
                 } else if (f.type=="str") {
-                    input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = f.value || '';
-                    input.placeholder = '';
-                    input.onchange = (e) => {
+                    control = document.createElement('input');
+                    control.type = 'text';
+                    control.value = f.value || '';
+                    control.placeholder = '';
+                    control.onchange = (e) => {
                         e.target.value = e.target.value.trim().toLowerCase();
                         this.setFilter(col.name, e.target.value);
                     };
                 };
 
-                const filterWrap = document.createElement('div');
+                filterWrap = filterWrap || document.createElement('div');
                 filterWrap.className = 'filter-wrap';
-                filterWrap.appendChild(input);
+                filterWrap.appendChild(control);
 
                 const clearButton = document.createElement('button');
                 clearButton.type = 'button';
@@ -368,6 +395,7 @@ class ListRenderer {
     }
 
     random() {
+        this.setFilter("release_id", "", true);
         const filteredSorted = this.getFilteredSortedData(true);
         let ids = Array.from(Object.keys(filteredSorted.reduce((acc , i)=>{
             acc[i.release_id] = true;
