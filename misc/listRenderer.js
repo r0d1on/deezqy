@@ -206,10 +206,10 @@ class ListRenderer {
                             &&
                             (item[col.name] !== undefined)
                             &&
-                            (~String(item[col.name]).toLowerCase().includes(v.slice(1)))
+                            (!String(item[col.name]).toLowerCase().includes(v.slice(1)))
                         ) ||
                         (
-                            (~v.startsWith("!"))
+                            (!v.startsWith("!"))
                             &&
                             (item[col.name] !== undefined)
                             &&
