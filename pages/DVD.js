@@ -107,8 +107,9 @@ const Page = {
         this.appState.films.list = [];
 
         let i = 0;
+        let src = structuredClone(Page.appState.data.dvd_items);
+
         let trackr = () => {
-            let src = structuredClone(Page.appState.data.dvd_items);
             let r_ids = Object.keys(src);
             if (i < r_ids.length) {
                 Page.appState.progress(`Normalising dvd collection`, i);
@@ -117,7 +118,7 @@ const Page = {
                 // add flattened film info into dvd list
                 let context = {
                     "folders": Page.appState.films.folders,
-                    "details": Page.appState.films.details[film_id],
+                    "details": Page.appState.films.details[film_id] || {},
                     "film": src[film_id],
                 };
                 let list_item = ListRenderer.flattenItem(Page.getColumns(), context);
