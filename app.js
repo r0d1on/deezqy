@@ -73,7 +73,7 @@ appState.progress =  function(name, stage, stages) {
         if (stages === undefined)
             throw "total stages must be defined"
         this._stages[name] = {
-            stage: stage||0,
+            stage: stage || 0,
             stages: stages,
             name: name
         }
@@ -118,6 +118,7 @@ appState.save_db = async function() {
 
         appState.DB.set(appState.tmdb_username + ".dvd_folders", appState.data.dvd_folders),
         appState.DB.set(appState.tmdb_username + ".dvd_items", appState.data.dvd_items),
+        appState.DB.set(appState.tmdb_username + ".dvd_details", appState.data.dvd_details),
     ])
 }
 
@@ -139,6 +140,7 @@ appState.restore_db = async function() {
 
     appState.data.dvd_folders = {};
     appState.data.dvd_items = {};
+    appState.data.dvd_details = {};
 
     if (appState.username) {
         appState.progress("Restoring user's cached data", 0, 1);
@@ -149,7 +151,8 @@ appState.restore_db = async function() {
             appState.DB.get(appState.username + ".wanted"),
             appState.DB.get(appState.username + ".release_details"),
             appState.DB.get(appState.tmdb_username + ".dvd_folders"),
-            appState.DB.get(appState.tmdb_username + ".dvd_items")          
+            appState.DB.get(appState.tmdb_username + ".dvd_items"),         
+            appState.DB.get(appState.tmdb_username + ".dvd_details")
         ]).then(([
             timestamp,
             folders,
@@ -157,7 +160,8 @@ appState.restore_db = async function() {
             wanted,
             details,
             dvd_folders,
-            dvd_items
+            dvd_items,
+            dvd_details
         ])=>{
             appState.data['timestamp'] = timestamp * 1;
             appState.data.folders = folders || [];
@@ -167,6 +171,7 @@ appState.restore_db = async function() {
 
             appState.data.dvd_folders = dvd_folders || [];
             appState.data.dvd_items = dvd_items || [];
+            appState.data.dvd_details = dvd_details || [];
 
             if (Array.isArray(appState.data.folders))
                 appState.data.folders = appState.make_index(appState.data.folders);
@@ -185,6 +190,9 @@ appState.restore_db = async function() {
 
             if (Array.isArray(appState.data.dvd_items))
                 appState.data.dvd_items = appState.make_index(appState.data.dvd_items);
+
+            if (Array.isArray(appState.data.dvd_details))
+                appState.data.dvd_details = appState.make_index(appState.data.dvd_details);
 
             appState.progress("Restoring user's cached data", 1);
             return new Promise((r, c)=>{r()})
