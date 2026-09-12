@@ -185,9 +185,10 @@ const Page = {
         this.appState.collection[list] = [];
 
         let i = 0;
+        let src = Page.appState.collection[folder];
+        let r_ids = Object.keys(src);
+
         let trackr = () => {
-            let src = Page.appState.collection[folder];
-            let r_ids = Object.keys(src);
             if (i < r_ids.length) {
                 Page.appState.progress(`Normalising the collection [${folder}]`, i);
                 let release_id = r_ids[i];

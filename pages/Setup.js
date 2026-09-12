@@ -244,8 +244,10 @@ const Page = {
                 leftText.classList.add("switch-active-text")
                 rightText.classList.remove("switch-active-text")
             }
-            if (renormalize)
+            if (renormalize) {
                 setTimeout(this.appState.Pages.Collection.normalise(), 100);
+                setTimeout(this.appState.Pages.DVD.normalise(), 100);
+            };
         };
         switchLabel.appendChild(leftText);
         switchLabel.appendChild(slider);
