@@ -1,85 +1,122 @@
-# Deezqy: Discogs Collection Analytics
+# Deezqy
 
-Deezqy is a lightweight, browser-based tool for analyzing and managing personal media  collection (powered by Discogs and TMBD). It provides a sortable and filterable table view, local caching, a uniqueness score for each release, and advanced search and track matching features. The app is built as a single-page application using vanilla JavaScript, HTML, and CSS.
+Deezqy is a browser-based personal media collection manager for music and video. It combines a Discogs music collection with TMDB list data for DVDs, movies, and TV shows. The application provides sortable collection tables, filtering, search, track matching, uniqueness scoring, and collection analytics.
+
+Deezqy is a single-page application built with browser-native JavaScript modules. It does not require a backend server or a build step for local development.
 
 ## Features
 
-- **Setup Page**: Enter your Discogs and / or TMDB private tokens and test credentials to automatically retrieve your username, or enter a username to access public releases. Choose your preferred track matching mode ("author & title" or "title only").
-- **Collection Page**: Load and update your collection, which is cached locally for fast access. The collection is displayed as a sortable and filterable table. Track uniqueness is calculated based on your selected matching mode.
-- **Advanced Search Page**: Search Discogs releases by multiple parameters (title, artist, track, country, format, barcode). Results are shown in a table with sorting and filtering. You can match search results against your collection to see which releases you already have or want.
-- **Table View**: Sort and filter any column. Sorting is toggled by clicking column headers, with visual indicators for sort direction. Filter inputs are available under each column name.
-- **Uniqueness Score**: Each release (album) is assigned a score representing its uniqueness within your collection, shown in the `score` column.
-- **Track Matching Mode**: Switch between "author & title" and "title only" matching for track uniqueness and deduplication.
-- **Release Info & Tracklist**: View detailed release information and tracklists, including cross-references to your collection for each track.
-- **Progress Bar**: The footer displays the current process and progress bar for long-running operations.
-- **Privacy**: All data is stored locally in your browser and is not shared externally.
-- **Navigation**: Use the menu at the top to switch between setup, collection, search, and help sections.
-- **Help Page**: Provides a clear guide for using the application.
-- **Support**: For more information or to report issues, visit the [GitHub](https://github.com/r0d1on/deezqy) page.
+### Music collection
 
-## Usage
+- Load and update a Discogs collection.
+- Browse releases and tracks in a sortable, filterable table.
+- Match tracks by artist and title or by title only.
+- Calculate a release uniqueness score based on overlapping tracks.
+- Show release details, tracklists, notes, formats, ratings, and prices.
+- Maintain a separate wanted list.
 
-1. **Setup**
-   - Go to the Setup page.
-   - Enter your Discogs access token and click "Test credentials" to retrieve your username automatically.
-   - Alternatively, enter a username to access public releases.
-   - Select your preferred track matching mode for collection uniqueness analysis.
+### Video collection
 
-2. **Loading & Updating**
-   - Use the Collection tab to load or update your collection.
-   - The collection is cached locally for faster access on future visits.
+- Authenticate with TMDB and load TMDB lists as DVD folders.
+- Browse movies and TV shows with posters, ratings, runtime, genres, notes, and release dates.
+- View budget, revenue, and return-on-investment information when provided by TMDB.
+- Filter and sort video items by folder, media type, title, rating, and other fields.
 
-3. **Table View**
-   - Your collection is displayed as a sortable and filterable table.
-   - Click column headers to sort; click again to reverse sort order.
-   - Enter filter values under column names to filter the collection.
+### Search and analytics
 
-4. **Advanced Search**
-   - Use the Search page to find releases by title, artist, track, country, format, or barcode.
-   - Results are shown in a sortable/filterable table.
-   - Click a result to view detailed release info and see if it matches any tracks in your collection.
+- Search Discogs by title, artist, track, country, format, or barcode.
+- Compare search results with the music collection and wanted list.
+- Analyze the music collection by folder, artist, media type, genre, or week added.
+- Analyze the video collection by folder, media type, genre, or release year.
+- Select analytics values such as release count, tracks, ratings, prices, runtime, budget, and ROI.
+- Display analytics as both a table and a Plotly bar chart.
 
-5. **Track Matching Mode**
-   - Switch between "author & title" and "title only" matching in Setup to control how tracks are deduplicated and scored for uniqueness.
+### Application features
 
-6. **Uniqueness Score**
-   - Each release is assigned a score representing its uniqueness within your collection, based on the selected matching mode.
+- Persistent browser-side caching for collection data.
+- IndexedDB storage for larger collection data and local storage for saved credentials/settings.
+- Progress and status feedback for API calls and normalization tasks.
+- Responsive interface with installable Progressive Web App support.
+- No application account or Deezqy-hosted database.
 
-7. **Progress & Status**
-   - The footer displays the current process and progress bar for long-running operations.
+## Getting started
 
-8. **Privacy**
-   - All data is stored locally in your browser and is not shared externally.
+1. Open the deployed application or serve the repository with a static web server.
+2. Open **Setup**.
+3. Enter a Discogs personal access token and username, or test the token to retrieve the account details.
+4. Optionally enter TMDB credentials to enable the **DVD** page and video analytics.
+5. Load the music collection from **Collection** or the video lists from **DVD**.
+6. Use **Analytics** to switch between the Music collection and Video collection sources.
 
-## Technologies Used
+Discogs access is required for music features. TMDB credentials and list data are required for video features. API data is fetched directly by the browser from the corresponding service.
+
+## Privacy and storage
+
+Collection data is cached in the browser using IndexedDB. Credential and application settings are stored locally using browser storage. Deezqy does not send collection data to its own server, but it does communicate with Discogs and TMDB when loading, searching, or updating data.
+
+Clearing the site's browser data removes the local cache and saved settings.
+
+## Technologies
 
 - HTML5
 - CSS3
-- JavaScript (ES6 modules)
-- Discogs API
+- Modern JavaScript with ES modules
+- IndexedDB for local database storage
+- `localStorage` for locally saved settings and cookie-like values
+- Discogs API for music collections and search
+- TMDB API for video lists and metadata
+- Plotly 2.35 for analytics charts
+- Service Worker and Web App Manifest for offline caching and installation
 
-## Project Structure
+## Project structure
 
-- `index.html` — Main HTML file, includes header, main area, and footer.
-- `style.css` — Styles for layout, table, menu, and help section.
-- `app.js` — Main application logic, menu handling, progress bar, and page rendering.
-- `pages/Setup.js` — Setup page logic and rendering.
-- `pages/Collection.js` — Collection page logic, table rendering, sorting, filtering, and normalization.
-- `pages/Search.js` — Advanced search page, release info, and collection matching.
-- `pages/Help.js` — Help page rendering.
-- `api/discogs.js` — Discogs API integration and data fetching.
-- `misc/listRenderer.js` — Generic table rendering, sorting, and filtering logic.
-- `misc/Utils.js` — Utility functions for normalization and track code generation.
-- `favicon.svg` — Favicon depicting a CD.
+```text
+.
+├── index.html              Application shell and external chart script
+├── app.js                  Application state, navigation, storage, and rendering
+├── appState.js             Shared application state
+├── style.css               Global layout and component styles
+├── manifest.webmanifest    Progressive Web App metadata
+├── service-worker.js       Static asset caching
+├── api/
+│   ├── cookie.js           Local credential/settings storage
+│   ├── db.js               IndexedDB wrapper
+│   ├── discogs.js          Discogs API client
+│   └── tmdb.js             TMDB API client
+├── misc/
+│   ├── listRenderer.js     Reusable table, sorting, and filtering logic
+│   ├── uiFeedback.js       Status and error notifications
+│   └── Utils.js            Normalization and track-matching utilities
+├── pages/
+│   ├── Setup.js            Credentials and matching settings
+│   ├── Collection.js       Discogs collection normalization and display
+│   ├── Wanted.js           Wanted releases display
+│   ├── DVD.js              TMDB video collection normalization and display
+│   ├── Search.js           Discogs search and result matching
+│   ├── Analytics.js        Music and video analytics
+│   └── Help.js             In-app usage guidance
+├── deploy_info/            Deployment metadata templates and variables
+├── _deploy.sh              Deployment helper
+├── _subst.sh               Deployment substitution helper
+└── _version_bump.sh        Version update helper
+```
 
 ## Development
 
-- The app is a single-page application and does not require a backend server.
-- All data is stored in the browser using local storage ~~and cookies~~.
-- The app was "vibecoded" on a weekend for fun and utility.
+No package installation is required. Because the application uses ES modules, run it through a local HTTP server instead of opening `index.html` directly. For example:
+
+```sh
+python3 -m http.server 8000
+```
+
+Then open <http://localhost:8000> in a browser.
+
+The application is static and can be hosted by any web server that serves HTML, CSS, JavaScript, and the accompanying assets.
 
 ## License
 
-This project is released under the MIT License.
+This project is released under the MIT License. See [LICENSE](LICENSE) for the license text.
 
-p.s.: Copilot/GPT-4.1 decided to go with MIT licence, I'm gonna play along. This is the only piece of text I wrote myself in this Readme.md.
+## Links
+
+- [GitHub repository](https://github.com/r0d1on/deezqy)

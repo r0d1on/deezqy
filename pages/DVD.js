@@ -49,14 +49,22 @@ const Page = {
 
         {name: "film_format", sortable:true, filter:"<>", path: (row, ctx)=>{
             return row.film.media_type;
-        }, maxwidth:"70px", extended:false},
+        }, maxwidth:"70px", extended:true},
 
         {name: "film_poster", path: "film.poster_path", maxwidth:"85px", render: (row)=>{
-            return `<a href="${row.details.homepage}"><img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_poster']]}"/></a>`
+            const picture = `<img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_poster']]}"/>`;
+            if (row.details.homepage)
+                return `<a href="${row.details.homepage}">${picture}</a>`
+            else
+                return picture;
         }},
 
         {name: "film_thumb", path: "film.backdrop_path", maxwidth:"85px", render: (row)=>{
-            return `<a href="https://www.imdb.com/title/${row.details.imdb_id}/"><img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_thumb']]}"/></a>`
+            const picture = `<img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_thumb']]}"/></a>`;
+            if (row.details.imdb_id)
+                return `<a href="https://www.imdb.com/title/${row.details.imdb_id}/">${picture}</a>`
+            else
+                return picture;
         }},
 
         {name: "film_title", sortable:true, filter:"", path: (row, ctx)=>{
@@ -69,15 +77,26 @@ const Page = {
 
         {name: "film_rating", sortable:true, path: "film.vote_average", filter:"", maxwidth:"80px"},
 
-        {name: "film_t", sortable:true, path: "details.runtime", filter:"", maxwidth:"40px"},
+        {name: "film_t", sortable:true, path: (row, ctx)=>1*row.details.runtime||0, maxwidth:"40px"},
 
         {name: "film_notes", sortable:true, filter:"", path: (row, ctx)=>{
             let notes = (row.film.comments||[]);
-            return (notes.length>0)?notes.join("<br>"):"";
+            return (notes.length > 0) ? notes.join("<br>") : "";
         }, maxwidth:"120px", extended:false},
 
-        //{name: "track_id", path: "track.id", filter:""},
+        {name: "film_tagline", path: "details.tagline", filter:"", maxwidth:"100px", extended:true},
+        {name: "film_overview", path: "details.overview", filter:"", maxwidth:"120px", extended:true},
+
+        {name: "film_budget", sortable:true, path: (row)=>{
+            let b = Array.from(row.details.budget+"").reverse().join("");
+            while (b.indexOf("000")>=0)
+                b = b.replace("000","K")
+            return Array.from(b).reverse().join("");
+        }, filter:"", maxwidth:"100px", extended:true},
+        {name: "film_roi", sortable:true, path: (row)=>Math.round(100*row.details.revenue / ((row.details.budget||0)+1))/100, maxwidth:"70px", extended:true},
+
         {name: "film_genres", path: "details.genres", filter:"", maxwidth:"150px"},
+
         {name: "film_mark", path: ()=>'⬜', filter:"<>", maxwidth:"78px"},
     ],
 

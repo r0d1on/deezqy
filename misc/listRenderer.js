@@ -179,8 +179,12 @@ class ListRenderer {
         if ((this.sortedBy !== null) && (sort_code != this._sorted_by)) {
             const col = this.columns[this.sortedBy];
             this.sorted.sort((a, b) => {
-                if (a[col.name] < b[col.name]) return -1 * this.sortedOrder;
-                if (a[col.name] > b[col.name]) return 1 * this.sortedOrder;
+                let va = a[col.name];
+                let vb = b[col.name];
+                if ((va+"") == "NaN") va = null;
+                if ((vb+"") == "NaN") vb = null;
+                if (va < vb) return -1 * this.sortedOrder;
+                if (va > vb) return 1 * this.sortedOrder;
                 return 0;
             });
             this._sorted_by = sort_code;

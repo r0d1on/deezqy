@@ -23,8 +23,8 @@ const Page = {
         "count" : p => p.count
     },
 
-    /** Analytics value definitions */
-    VALUES: [
+    /** Music analytics value definitions */
+    MUSIC_VALUES: [
         {
             name: 'duplicates', 
             label: 'Duplicate tracks',
@@ -101,8 +101,8 @@ const Page = {
         }
     ],
 
-    /** Analytics grouping definitions */
-    GROUPS: [
+    /** Music analytics grouping definitions */
+    MUSIC_GROUPS: [
         {
             name: 'folder',
             label: 'By Folder',
@@ -132,9 +132,85 @@ const Page = {
             field: 'release.date_added',
             transform: (val) => {
                 let dt = new Date(val);
-                var start = new Date(dt.getFullYear(), 0, 0);
-                return Math.floor((dt - start) / (7 * 1000 * 60 * 60 * 24));
+                dt.setHours(0);
+                dt.setMinutes(0);
+                dt.setSeconds(0);
+                dt.setMilliseconds(0);
+                dt = new Date(dt.valueOf() - (dt.getDay()-1)*24*60*60*1000);
+                return dt.toISOString().slice(0,10);
             }
+        }
+    ],
+
+    /** DVD analytics value definitions */
+    DVD_VALUES: [
+        {
+            name: 'count',
+            label: 'DVD count',
+            field: 'film',
+            aggregations: ['count'],
+            transform: () => [1, 1]
+        },
+        {
+            name: 'rating',
+            label: 'Average rating',
+            field: 'film.vote_average',
+            aggregations: ['average'],
+            transform: (value) => [value || 0, value ? 1 : 0]
+        },
+        {
+            name: 'runtime',
+            label: 'Runtime (minutes)',
+            field: 'details.runtime',
+            aggregations: ['total', 'average'],
+            transform: (value) => [value || 0, value ? 1 : 0]
+        },
+        {
+            name: 'budget',
+            label: 'Budget',
+            field: 'details.budget',
+            aggregations: ['total', 'average'],
+            transform: (value) => [value || 0, value ? 1 : 0]
+        },
+        {
+            name: 'roi',
+            label: 'Return on investment',
+            field: 'details',
+            aggregations: ['average'],
+            transform: (details) => {
+                if (!details || !details.budget)
+                    return [0, 0];
+                return [details.revenue / details.budget, 1];
+            }
+        }
+    ],
+
+    /** DVD analytics grouping definitions */
+    DVD_GROUPS: [
+        {
+            name: 'folder',
+            label: 'By Folder',
+            field: 'film.folders',
+            transform: (folders) => Object.keys(folders || {}).map((id) =>
+                (Page.appState.films.folders[id] || {}).name || '?'
+            ).join('; ') || 'Unknown'
+        },
+        {
+            name: 'type',
+            label: 'By Media Type',
+            field: 'film.media_type'
+        },
+        {
+            name: 'genre',
+            label: 'By Genre',
+            field: 'details.genres',
+            transform: (value) => (value || 'Unknown').split(' ; ')[0]
+        },
+        {
+            name: 'year',
+            label: 'By Release Year',
+            field: 'film.release_date',
+            transform: (value) => value ? value.slice(0, 4) : 'Unknown'
         }
     ],
 
@@ -144,6 +220,13 @@ const Page = {
      */
     init(appState) {
         this.appState = appState;
+        this.folder = 'music';
+        this._setDefinitions();
+    },
+
+    _setDefinitions() {
+        this.VALUES = this.folder === 'dvd' ? this.DVD_VALUES : this.MUSIC_VALUES;
+        this.GROUPS = this.folder === 'dvd' ? this.DVD_GROUPS : this.MUSIC_GROUPS;
         this.selectedValue = this.VALUES[0];
         this.selectedGroup = this.GROUPS[0];
         this.selectedAggregation = this.selectedValue.aggregations[0];
@@ -172,7 +255,8 @@ const Page = {
      * @private
      */
     _generateReport() {
-        if (!this.appState.collection || !this.appState.collection.list) {
+        const source = this._getSource();
+        if (!source) {
             uiFeedback.showError('No collection data available');
             return;
         }
@@ -182,17 +266,17 @@ const Page = {
 
         // Group and aggregate data
         const groups = {};
-        Object.values(this.appState.collection.releases).forEach(item => {
-            if (!(item.id in this.visible_releases))
+        source.items.forEach(item => {
+            if (!(source.id(item) in this.visible_releases))
                 return;
 
-            let groupKey = Utils.extractListValue({release:item}, groupField);
+            let groupKey = Utils.extractListValue(source.context(item), groupField);
             groupKey = this.selectedGroup.transform ? 
                 this.selectedGroup.transform(groupKey) : 
                 groupKey || 'Unknown';
 
             const value = this.selectedValue.transform(
-                Utils.extractListValue({release:item}, valueField)
+                Utils.extractListValue(source.context(item), valueField)
             );
 
             if (!groups[groupKey]) {
@@ -258,6 +342,25 @@ const Page = {
         Plotly&&Plotly.newPlot(this._plotArea, [plotData], layout);
     },
 
+    _getSource() {
+        if (this.folder === 'dvd') {
+            if (!this.appState.films || !this.appState.films.list)
+                return null;
+            return {
+                items: this.appState.films.list,
+                id: (item) => item.id,
+                context: (item) => ({film: item.film, details: item.details})
+            };
+        }
+        if (!this.appState.collection || !this.appState.collection.list)
+            return null;
+        return {
+            items: this.appState.collection.list,
+            id: (item) => item.id,
+            context: (item) => item
+        };
+    },
+
     /**
      * Render the analytics page
      * @param {HTMLElement} parent - Parent DOM element
@@ -268,6 +371,19 @@ const Page = {
         // Controls group
         const controls = document.createElement('div');
         controls.className = 'analytics-controls';
+
+        const folderGroup = document.createElement('div');
+        folderGroup.className = 'analytics-control-group';
+        const folderSelect = this._createSelect([
+            {name: 'music', label: 'Music collection'},
+            {name: 'dvd', label: 'Video collection'}
+        ], this.folder, (e) => {
+            this.folder = e.target.value;
+            this._setDefinitions();
+            this.render(parent);
+        });
+        folderGroup.appendChild(folderSelect);
+        controls.appendChild(folderGroup);
 
         // Value select
         const valueGroup = document.createElement('div');
@@ -339,21 +455,26 @@ const Page = {
         parent.appendChild(listArea);
         this._listArea = listArea;
 
+        const source = this._getSource();
+        if (!source)
+            return;
+
+        const page = this.folder === 'dvd' ? Page.appState.Pages.DVD : Page.appState.Pages.Collection;
         let renderer = new ListRenderer({
-            data: this.appState.collection.list,
-            columns: Page.appState.Pages.Collection.LIST,
+            data: source.items,
+            columns: page.LIST,
             compact: false,
-            filters: Page.appState.Pages.Collection.listFilters,
+            filters: page.listFilters,
         });
         renderer.render({fake:true});
 
         this.visible_releases = renderer._filteredSorted.reduce((p, c)=>{
-            p[c.release_id]=true;
+            p[source.id(c)]=true;
             return p
         },{});
 
         // Generate initial report
-        if (this.appState.collection && this.appState.collection.list) {
+        if (source) {
             this._generateReport();
         }
 

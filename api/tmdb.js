@@ -66,6 +66,9 @@ let API = {
 
         }).then(data => {
             console.log("TMDB data:", data);
+            if (errors)
+                uiFeedback.showStatus('proceeding...', 'info');
+
             if ((data.total_pages) && (page!==null) && (data.page < data.total_pages)) {
                 (progress)&&(progress(data.page, data.total_pages));
                 return API.call(
