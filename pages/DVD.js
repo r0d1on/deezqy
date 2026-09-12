@@ -54,7 +54,7 @@ const Page = {
         {name: "film_poster", path: "film.poster_path", maxwidth:"85px", render: (row)=>{
             const picture = `<img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_poster']]}"/>`;
             if (row.details.homepage)
-                return `<a href="${row.details.homepage}">${picture}</a>`
+                return `<a target="_blank" href="${row.details.homepage}">${picture}</a>`
             else
                 return picture;
         }},
@@ -62,7 +62,7 @@ const Page = {
         {name: "film_thumb", path: "film.backdrop_path", maxwidth:"85px", render: (row)=>{
             const picture = `<img style="width:80px;" src="https://media.themoviedb.org/t/p/w300_and_h450_face/${[row['film_thumb']]}"/></a>`;
             if (row.details.imdb_id)
-                return `<a href="https://www.imdb.com/title/${row.details.imdb_id}/">${picture}</a>`
+                return `<a target="_blank" href="https://www.imdb.com/title/${row.details.imdb_id}/">${picture}</a>`
             else
                 return picture;
         }},
