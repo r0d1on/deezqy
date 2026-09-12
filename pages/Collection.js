@@ -291,7 +291,7 @@ const Page = {
 
     downloadTracks : function(update) {
         if (update) {
-            Page.appState.data.release_details = Page.appState.datarelease_details || {};
+            Page.appState.data.release_details = Page.appState.data.release_details || {};
         } else {
             Page.appState.data.release_details = {};
         };
