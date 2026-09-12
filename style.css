@@ -454,6 +454,10 @@ input,button {
     overflow-y: auto;
     background: #f9f6ff;
 }
+.release-results-section.films-results {
+    max-height: none;
+    overflow-y: visible;
+}
 .release-info-section {
     margin: 0 0 24px 0;
     padding: 18px 0 18px 0;

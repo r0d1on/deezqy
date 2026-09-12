@@ -12,7 +12,7 @@ const Page = {
     /**
      * Column definitions for search results table.
      */
-    LIST: [
+    MUSIC_LIST: [
         { name: 'release_id', path: 'result.id', maxwidth: '90px', render: (row) => {
             return `<a href="https://www.discogs.com/release/${row.release_id}" target="_blank">${row.release_id}</a>`; 
         }},
@@ -38,23 +38,45 @@ const Page = {
             var want = row['release_wanting'] || 0;
             return (have + want) ? Math.round((want / (want + have)) * 1000) / 10 : '';
         }},
-        { name: 'release_have', sortable:true, path: 'result.user_data.in_collection', render: (row) => {
-            return (row['release_have'] ? "\u2705" : "");
-        }},
         { name: 'release_want', sortable:true, path: 'result.user_data.in_wantlist', render: (row) => {
-            return (row['release_want'] ? "\u2705" : "");
-        }}
+            return (row['release_want'] ? "🟥" : "⬜");
+        }},
+        { name: 'release_have', sortable:true, path: 'result.user_data.in_collection', render: (row) => {
+            return (row['release_have'] ? "🟩" : "⬜");
+        }},
+    ],
+    FILMS_LIST: [
+        { name: 'film_id', path: 'result.id', maxwidth: '90px', render: (row) => {
+            return `<a href="https://www.themoviedb.org/movie/${row.film_id}" target="_blank">${row.film_id}</a>`;
+        }},
+        { name: 'film_poster', path: 'result.poster_path', maxwidth: '100px', render: (row) => {
+            return row.film_poster ? `<img src="https://image.tmdb.org/t/p/w185${row.film_poster}" style="width:100px;">` : '';
+        }},
+        { name: 'film_title', path: 'result.title' },
+        { name: 'film_original_title', path: 'result.original_title' },
+        { name: 'film_release_date', sortable: true, path: 'result.release_date', maxwidth: '120px' },
+        { name: 'film_rating', sortable: true, path: 'result.vote_average', maxwidth: '100px' },
+        { name: 'film_overview', path: 'result.overview' },
+        { name: 'film_want', path: (row, context) => Page.isFilmInDvdFolder(context.result, 'want'), render: (row) => {
+            return (row.film_want ? "🟥" : "⬜");
+        }},
+        { name: 'film_have', path: (row, context) => Page.isFilmInDvdFolder(context.result, 'collected')||Page.isFilmInDvdFolder(context.result, 'dvd'), render: (row) => {
+            return (row.film_have ? "🟩" : "⬜");
+        }},
     ],
     /**
      * Search input field definitions.
      */
-    searchFields: [
+    musicSearchFields: [
         { placeholder: 'Title', ref: 'inputTitle', param: 'release_title' },
         { placeholder: 'Artist', ref: 'inputArtist', param: 'artist' },
         { placeholder: 'Track', ref: 'inputTrack', param: 'track' },
         { placeholder: 'Country', ref: 'inputCountry', param: 'country' },
         { placeholder: 'Format', ref: 'inputFormat', param: 'format' },
         { placeholder: 'Barcode', ref: 'inputBarcode', param: 'barcode' }
+    ],
+    filmSearchFields: [
+        { placeholder: 'Film title', ref: 'inputFilmQuery', param: 'query' }
     ],
     /** @type {object} */
     appState: null,
@@ -64,6 +86,18 @@ const Page = {
      */
     init(appState) {
         this.appState = appState;
+        this.appState.search_type = 'Music';
+    },
+
+    isFilmInDvdFolder(film, folderName) {
+        const dvdItems = this.appState.data.dvd_items || {};
+        const dvdFolders = this.appState.data.dvd_folders || {};
+        const dvdItem = Object.values(dvdItems).find((item) => String(item.id0) === String(film.id));
+        if (!dvdItem) return false;
+        return Object.keys(dvdItem.folders || {}).some((folderId) => {
+            const folder = dvdFolders[folderId];
+            return folder && String(folder.name).toLowerCase() === folderName;
+        });
     },
     /**
      * Render the search page
@@ -71,18 +105,88 @@ const Page = {
      */
     render(parent) {
         parent.innerHTML = '';
-        // Search block
+
+        let resultsSection = document.createElement('div');
+        resultsSection.className = 'release-results-section';
+        let infoSection = document.createElement('div');
+        infoSection.className = 'release-info-section';
+        // Store for later use
+        this._resultsSection = resultsSection;
+        this._infoSection = infoSection;
+
         let searchBlock = document.createElement('div');
         searchBlock.className = 'release-search-block';
-        // Arrange inputs in rows of 3
+        let fieldsContainer = document.createElement('div');
+        searchBlock.appendChild(fieldsContainer);
+        this._fieldsContainer = fieldsContainer;
+        searchBlock.insertBefore(this.renderSearchModeSwitch(), fieldsContainer);
+        this.renderSearchFields();
+        parent.appendChild(searchBlock);
+        // Results section
+        parent.appendChild(resultsSection);
+        // Release info section
+        parent.appendChild(infoSection);
+    },
+
+    renderSearchModeSwitch() {
+        let switchGroup = document.createElement('div');
+        switchGroup.className = 'settings-group other-settings-group';
+
+        let switchContainer = document.createElement('div');
+        switchContainer.className = 'switch-container';
+        let switchLabel = document.createElement('label');
+        switchLabel.className = 'switch-label';
+        let switchInput = document.createElement('input');
+        switchInput.type = 'checkbox';
+        switchInput.className = 'switch-input';
+        let slider = document.createElement('span');
+        slider.className = 'switch-slider';
+        let knob = document.createElement('span');
+        knob.className = 'switch-knob';
+        slider.appendChild(knob);
+        let audioText = document.createElement('span');
+        audioText.textContent = 'Music';
+        audioText.className = 'switch-left-text';
+        let filmText = document.createElement('span');
+        filmText.textContent = 'Films';
+        filmText.className = 'switch-right-text';
+        switchInput.checked = this.appState.search_type === 'Films';
+
+        const updateSwitch = () => {
+            this.appState.search_type = switchInput.checked ? 'Films' : 'Music';
+            this._resultsSection.innerHTML = '';
+            this._infoSection.innerHTML = '';
+            this.selectedRelease = null;
+            this._resultsSection.classList.toggle('films-results', switchInput.checked);
+            knob.style.left = switchInput.checked ? '30px' : '2px';
+            audioText.classList.toggle('switch-active-text', !switchInput.checked);
+            filmText.classList.toggle('switch-active-text', switchInput.checked);
+            this.renderSearchFields();
+        };
+        switchInput.onchange = updateSwitch;
+        slider.onclick = (event) => {
+            switchInput.checked = !switchInput.checked;
+            updateSwitch();
+            event.preventDefault();
+        };
+        switchLabel.append(audioText, slider, filmText, switchInput);
+        switchContainer.appendChild(switchLabel);
+        switchGroup.appendChild(switchContainer);
+        updateSwitch();
+        return switchGroup;
+    },
+
+    renderSearchFields() {
+        this._fieldsContainer.innerHTML = '';
+        this._infoSection.innerHTML = '';
+
+        let fields = this.appState.search_type === 'Films' ? this.filmSearchFields : this.musicSearchFields;
         let rowDiv = null;
-        let firstRowDiv = null;
-        this.searchFields.forEach((f, idx) => {
+        fields.forEach((f, idx) => {
             if (idx % 3 === 0) {
                 rowDiv = document.createElement('div');
                 rowDiv.className = 'search-row';
-                searchBlock.appendChild(rowDiv);
-                if (idx === 0) firstRowDiv = rowDiv;
+                this._fieldsContainer.appendChild(rowDiv);
             }
             let fieldWrap = document.createElement('div');
             fieldWrap.className = 'search-field-wrap';
@@ -125,26 +229,16 @@ const Page = {
             this.search();
         };
         rowDiv.appendChild(searchBtn);
-        parent.appendChild(searchBlock);
-        // Results section
-        let resultsSection = document.createElement('div');
-        resultsSection.className = 'release-results-section';
-        parent.appendChild(resultsSection);
-        // Release info section
-        let infoSection = document.createElement('div');
-        infoSection.className = 'release-info-section';
-        parent.appendChild(infoSection);
-        // Store for later use
-        this._resultsSection = resultsSection;
-        this._infoSection = infoSection;
     },
     
     renderSearchResults: function(results) {
         this._resultsSection.innerHTML = '';
+        this._infoSection.innerHTML = '';
 
+        let columns = this.appState.search_type === 'Films' ? this.FILMS_LIST : this.MUSIC_LIST;
         let flattened = results.map((result, index)=>{
             let row = ListRenderer.flattenItem(
-                this.LIST,
+            columns,
                 {
                     "result" : result
                 }
@@ -156,10 +250,12 @@ const Page = {
         // Use ListRenderer for results, preserve filters
         new ListRenderer({
             data: flattened,
-            columns: this.LIST,
+            columns: columns,
             compact: false,
             onRowClick: (row, target) => {
-                this.fetchReleaseInfo(row.release_id);
+                if (this.appState.search_type === 'Music') {
+                    this.fetchReleaseInfo(row.release_id);
+                }
                 Array.from(this._resultsSection.querySelectorAll('tr')).forEach(tr=>tr.classList.remove('collection-row-active'));
                 target.classList.add('collection-row-active');
             }
@@ -169,25 +265,33 @@ const Page = {
 
     search: function() {
         // Save search values for persistence
-        this.searchFields.forEach(f => {f.value = this[f.ref].value;});
-        if (!this.appState.token) {
+        let fields = this.appState.search_type === 'Films' ? this.filmSearchFields : this.musicSearchFields;
+        fields.forEach(f => {f.value = this[f.ref].value;});
+        let isFilmSearch = this.appState.search_type === 'Films';
+        if (isFilmSearch && !this.appState.tmdb_token || !isFilmSearch && !this.appState.token) {
             uiFeedback.showStatus("Search works only if access token is provided!", "warning");
             return;
         };
         this._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">Searching...</div>';
-        let url = 'https://api.discogs.com/database/search?type=release';
-        this.searchFields.forEach(f => {
+        let url = isFilmSearch ? 'https://api.themoviedb.org/3/search/movie' : 'https://api.discogs.com/database/search?type=release';
+        let query = {};
+        fields.forEach(f => {
             const val = this[f.ref] && this[f.ref].value;
-            if (val) url += `&${f.param}=${encodeURIComponent(val)}`;
+            if (val) {
+                if (isFilmSearch) query[f.param] = val;
+                else url += `&${f.param}=${encodeURIComponent(val)}`;
+            }
         });
-        this.appState.API.call(
-            url
-        ).then(data => {
-            if (data.results.length === 0) {
+        let request = isFilmSearch
+            ? this.appState.TMDB.call(url, 'GET', query)
+            : this.appState.API.call(url);
+        request.then(data => {
+            let results = Array.isArray(data) ? data : data.results;
+            if (!results || results.length === 0) {
                 this._resultsSection.innerHTML = '<div style="font-size:18px;color:#888">No results found.</div>';
                 return;
             }
-            this.renderSearchResults(data.results);
+            this.renderSearchResults(results);
         });
     },
 
