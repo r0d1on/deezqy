@@ -44,7 +44,7 @@ const Page = {
             }, filter:"<>", filter_source:"raw_folder", sortable:true, maxwidth:"80px"},
 
         {name: "release_id", path: "film.id0", filter:"", sortable:true, maxwidth:"90px", render: (row)=>{
-            return `<a href="https://www.themoviedb.org/${row['film_format']}/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
+            return `<a href="https://www.themoviedb.org/${row['id'].split(":")[0]}/${row['release_id']}" target="_blank">${row['release_id']}</a>`;
         }},
 
         {name: "film_format", sortable:true, filter:"<>", path: (row, ctx)=>{
