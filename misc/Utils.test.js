@@ -26,7 +26,7 @@ assertEqual(Utils.getTrackCode('Artist', 'Song', 'author & title'), 'artist:song
 // Test ListRenderer clear-filter behavior
 const renderer = new ListRenderer({
     data: [],
-    columns: [{ name: 'title', filter: '<>'],
+    columns: [{ name: 'title', filter: '<>'},
               { name: 'is_new', filter: '0' },
               { name: 'artist', filter: '' }],
     onFiltersChange: () => {}
