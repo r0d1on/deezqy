@@ -192,6 +192,7 @@ const Page = {
             if (i < r_ids.length) {
                 Page.appState.progress(`Normalising the collection [${folder}]`, i);
                 let release_id = r_ids[i];
+                let first_track = true;
                 let release = src[release_id];
                 let format = release.basic_information.formats.map(e=>e.name).join("|")
                 release.format = format;
@@ -243,6 +244,8 @@ const Page = {
                         "raw_track": raw_track
                     };
                     let list_item = ListRenderer.flattenItem(Page.getColumns(), context);
+                    list_item.first_track = first_track;
+                    first_track = false;
                     Page.appState.collection[list].push(list_item);
                 };
 

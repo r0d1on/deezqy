@@ -147,8 +147,8 @@ const Page = {
 
             } else {
                 Page.appState.films.list.sort((a, b) => {
-                    if (a.film.i < b.film.i) return -1;
-                    if (a.film.i > b.film.i) return 1;
+                    if (a.film.i < b.film.i) return 1;
+                    if (a.film.i > b.film.i) return -1;
                     return 0;
                 });
 
