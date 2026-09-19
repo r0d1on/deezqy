@@ -269,6 +269,8 @@ const Page = {
         source.items.forEach(item => {
             if (!(source.id(item) in this.visible_releases))
                 return;
+            if (!source.countable(item))
+                return;
 
             let groupKey = Utils.extractListValue(source.context(item), groupField);
             groupKey = this.selectedGroup.transform ? 
@@ -349,7 +351,8 @@ const Page = {
             return {
                 items: this.appState.films.list,
                 id: (item) => item.id,
-                context: (item) => ({film: item.film, details: item.details})
+                context: (item) => ({film: item.film, details: item.details}),
+                countable: (item) => true,
             };
         }
         if (!this.appState.collection || !this.appState.collection.list)
@@ -357,7 +360,8 @@ const Page = {
         return {
             items: this.appState.collection.list,
             id: (item) => item.id,
-            context: (item) => item
+            context: (item) => item,
+            countable: (item) => item.first_track,
         };
     },
 
